@@ -88,6 +88,11 @@ Experienced users can set this to a nil value and then include the
   :group 'envrc
   :type 'boolean)
 
+(defcustom envrc-async-prompt-before-kill t
+  "Whether or not to prompt the user before killing running envrc processes."
+  :group 'envrc
+  :type 'boolean)
+
 (defcustom envrc-status-frames '("=  " "== " "===" " ==" "  =" "   ")
   "List of frames for the spinner."
   :group 'envrc
@@ -519,7 +524,11 @@ CALLBACK the function which will get the return value."
                     (goto-char (point-max))
                     (add-face-text-property initial-pos (point) (if (eq 0 exit-code) 'success 'error)))
                   (insert "\n\n")
-                  (when (and (numberp exit-code) (/= 0 exit-code))
+                  ;; Since the async processing interface allows the user to
+                  ;; interactively kill the process, do not popup the buffer
+                  ;; when `envrc-async-processing' is true.
+                  (when (and (numberp exit-code) (and (/= 0 exit-code)
+                                                      (/= 9 exit-code)))
                     (display-buffer (current-buffer)))))
               (kill-buffer stdout)
               (kill-buffer stderr)
@@ -734,9 +743,20 @@ SENTINEL, OUT-BUF, ERR-BUF and ARGS are the respective keywords of
         (when envrc-add-to-mode-line-misc-info
           (envrc-status-start))))))
 
+(defun envrc--kill-running-prompt (env-dir)
+  "Prompt user to kill any process loading the environment of ENV-DIR."
+  (when-let* ((proc (alist-get 'process (gethash env-dir envrc--processes)))
+              (kill (if envrc-async-prompt-before-kill
+                        (yes-or-no-p (format "Process %s is loading the environment, kill it? " proc))
+                      t)))
+    (kill-process proc)
+    (while (alist-get 'process (gethash env-dir envrc--processes))
+      (sleep-for 0.1))))
+
 (defun envrc--run-direnv (verb)
   "Run direnv command named by VERB, then refresh current env."
   (envrc--with-required-current-env env-dir
+    (envrc--kill-running-prompt env-dir)
     (let* ((outbuf (get-buffer-create (format "*envrc-%s*" verb)))
            (default-directory env-dir)
            (exit-code (envrc--call-process-with-global-env envrc-direnv-executable nil outbuf nil verb)))
@@ -769,8 +789,6 @@ Display MSG in debug buffer if `envrc-debug' is non-nil."
 (defun envrc-deny ()
   "Run \"direnv deny\" in the current env."
   (interactive)
-  (when-let ((proc (alist-get 'process (gethash env-dir envrc--processes))))
-    (kill-process proc))
   (envrc--run-direnv "deny"))
 
 (defun envrc-reload-all ()
