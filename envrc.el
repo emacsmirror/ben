@@ -523,7 +523,13 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
     (or envrc--remote-path
         (apply fn vec nil))))
 
+;; NOTE: since this function is meant to be invoked by `completing-read',
+;; `envrc-mode' must be enabled in the minibuffer. This can be configured by
+;; setting `envrc-disable-in-minibuffer' to nil.
+(advice-add 'Man-completion-table :around #'envrc-propagate-environment)
 (advice-add 'shell-command :around #'envrc-propagate-environment)
+(advice-add 'shell-command-to-string :around #'envrc-propagate-environment)
+(advice-add 'async-shell-command :around #'envrc-propagate-environment)
 (advice-add 'org-babel-eval :around #'envrc-propagate-environment)
 (advice-add 'org-export-file :around #'envrc-propagate-environment)
 (advice-add 'tramp-get-connection-buffer :filter-return #'envrc-propagate-tramp-environment)
