@@ -73,10 +73,10 @@ Add a snippet like the following at the *bottom of your init.el*:
 #+begin_src emacs-lisp
 (use-package envrc
   :vc (:url "https://codeberg.org/pastor/envrc")
-  :general
-  (:keymaps
-   'envrc-mode-map
-   "C-c e" 'envrc-command-map)
+  :bind
+  (:map
+   envrc-mode-map
+   ("C-c e" . envrc-command-map))
   :config
   (setq envrc-indicator '(" [" (:eval (envrc--status)) "]"))
   :init
