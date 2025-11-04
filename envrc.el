@@ -311,8 +311,7 @@ ENV-DIR is the directory where to update the status."
 (defun envrc-status-stop (env-dir)
   "Stop the spinner and remove it from the mode line.
 ENV-DIR is the directory where to update the status."
-  (when (and envrc--status-timer
-             (zerop (hash-table-count envrc--processes)))
+  (when envrc--status-timer
     (cancel-timer envrc--status-timer)
     (setq envrc--status-timer nil))
 
