@@ -16,10 +16,8 @@ INIT_PACKAGES := "(progn \
 
 all: compile test package-lint clean-elc
 
-test-sync: SYNC_MODE = --eval "(setq envrc-async-processing nil)"
-
 test: test-sync test-async
-
+test-sync: SYNC_MODE = --eval "(setq envrc-async-processing nil)"
 test-%:
 	${EMACS} -Q --eval $(subst PACKAGES,${DEPS},${INIT_PACKAGES}) ${SYNC_MODE} -batch -l envrc.el -l envrc-tests.el -f ert-run-tests-batch-and-exit
 

@@ -168,7 +168,7 @@
       (should (not (local-variable-p 'process-environment)))
       (when envrc-async-processing
         (sleep-for 0.1))
-      (should (eq envrc--status 'error)))))
+      (should (eq envrc--status 'denied)))))
 
 (ert-deftest envrc-reload-existing-buffer ()
   (envrc-tests--with-temp-directory _
@@ -236,11 +236,11 @@
         (envrc-reload)
         (when envrc-async-processing
           (sleep-for 0.1))
-        (should (eq envrc--status 'error)))
+        (should (eq envrc--status 'denied)))
 
       (when envrc-async-processing
         (sleep-for 0.1))
-      (should (eq envrc--status 'error))
+      (should (eq envrc--status 'denied))
       (when envrc-async-processing
         (sleep-for 0.1))
       (should (not (local-variable-p 'process-environment))))))
