@@ -1,4 +1,4 @@
-;;; envrc-list.el --- Manage envrc sessions -*- lexical-binding: t -*-
+;;; ben-list.el --- Manage ben sessions -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2022  Free Software Foundation, Inc.
 
@@ -19,26 +19,26 @@
 
 ;;; Commentary:
 
-;; This is an interface to manage `envrc' async processes.
+;; This is an interface to manage `ben' async processes.
 
 ;;; Code:
 
 ;;;; Requirements
 
-(require 'envrc)
+(require 'ben)
 (require 'vtable)
 (require 'proced)
 
 ;;; ---
 
-(defcustom envrc-list-display-buffer-action
+(defcustom ben-list-display-buffer-action
   nil
-  "The action used to display the envrc list buffer."
-  :group 'envrc
+  "The action used to display the ben list buffer."
+  :group 'ben
   :type 'sexp)
 
-(defun envrc-list--get-processes ()
-  "Return processes started by `envrc'."
+(defun ben-list--get-processes ()
+  "Return processes started by `ben'."
   (let (table)
     (maphash (lambda (key val)
                (let ((proc (alist-get 'process val))
@@ -48,56 +48,56 @@
                                              (alist-get 'subscribed val))))
                  (push `((process . ,proc) (path . ,key) (subscribed . ,subscribed))
                        table)))
-             envrc--processes)
+             ben--processes)
     (or table
         '(()))))
 
 ;; NOTE: the default face sets a foreground. Better to use one without so we can
 ;; propertize.
-(defface envrc-list-even-face `((t :extend t))
-  "Face used by `envrc-list-processes' for odd rows."
-  :group 'envrc)
+(defface ben-list-even-face `((t :extend t))
+  "Face used by `ben-list-processes' for odd rows."
+  :group 'ben)
 
-(defface envrc-list-odd-face '((t :background "gray92" :extend t))
-  "Face used by `envrc-list-processes' for odd rows."
-  :group 'envrc)
+(defface ben-list-odd-face '((t :background "gray92" :extend t))
+  "Face used by `ben-list-processes' for odd rows."
+  :group 'ben)
 
-(defface envrc-list-pid-face '((t :inherit bold))
-  "Face used by `envrc-list-processes' for odd rows."
-  :group 'envrc)
+(defface ben-list-pid-face '((t :inherit bold))
+  "Face used by `ben-list-processes' for odd rows."
+  :group 'ben)
 
-(defface envrc-list-path-face '((t :inherit link))
-  "Face used by `envrc-list-processes' for odd rows."
-  :group 'envrc)
+(defface ben-list-path-face '((t :inherit link))
+  "Face used by `ben-list-processes' for odd rows."
+  :group 'ben)
 
-(defface envrc-list-subscribed-face '((t :foreground "OliveDrab"))
-  "Face used by `envrc-list-processes' for odd rows."
-  :group 'envrc)
+(defface ben-list-subscribed-face '((t :foreground "OliveDrab"))
+  "Face used by `ben-list-processes' for odd rows."
+  :group 'ben)
 
-(defcustom envrc-list-auto-update-flag t
-  "Non-nil means auto update envrc buffers."
-  :group 'envrc
+(defcustom ben-list-auto-update-flag t
+  "Non-nil means auto update ben buffers."
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-list-auto-update-interval 0.5
-  "Time interval in idle seconds for auto updating `envrc' buffers."
-  :group 'envrc
+(defcustom ben-list-auto-update-interval 0.5
+  "Time interval in idle seconds for auto updating `ben' buffers."
+  :group 'ben
   :type 'integer)
 
-(defvar envrc-list-auto-update-timer nil
-  "Stores if `Envrc' auto update timer is already installed.")
+(defvar ben-list-auto-update-timer nil
+  "Stores if `Ben' auto update timer is already installed.")
 
-(defun envrc-list-auto-update ()
-  "Auto-update `envrc' buffers using `run-at-time'.
+(defun ben-list-auto-update ()
+  "Auto-update `ben' buffers using `run-at-time'.
 
-If there are no `envrc' buffers, cancel the timer."
-  (if (and envrc-list-auto-update-flag
-           (get-buffer "*envrc-processes*"))
-      (envrc-list-refresh)
-    (cancel-timer envrc-list-auto-update-timer)
-    (setq envrc-list-auto-update-timer nil)))
+If there are no `ben' buffers, cancel the timer."
+  (if (and ben-list-auto-update-flag
+           (get-buffer "*ben-processes*"))
+      (ben-list-refresh)
+    (cancel-timer ben-list-auto-update-timer)
+    (setq ben-list-auto-update-timer nil)))
 
-(defun envrc-list--object-find ()
+(defun ben-list--object-find ()
   "Find item of vtable under point."
   (interactive)
   (let ((col (vtable-current-column)))
@@ -122,7 +122,7 @@ If there are no `envrc' buffers, cancel the timer."
                               (buf (get-buffer name)))
                     (pop-to-buffer buf))))))
 
-(defun envrc-list-kill-process ()
+(defun ben-list-kill-process ()
   "Kill process under POINT."
   (interactive)
   (when-let* ((table (vtable-current-table))
@@ -135,12 +135,12 @@ If there are no `envrc' buffers, cancel the timer."
         (vtable-update-object table '(()) obj)
       (vtable-remove-object table obj))))
 
-(defun envrc-list-refresh (&rest _)
-  "Refresh `envrc' process list."
+(defun ben-list-refresh (&rest _)
+  "Refresh `ben' process list."
   (interactive)
   ;; HACK: running this while on minibuffer resets `window-point'.
   (unless (minibufferp)
-    (when-let* ((buf (get-buffer "*envrc-processes*")))
+    (when-let* ((buf (get-buffer "*ben-processes*")))
       (with-current-buffer buf
         (let* ((windows (get-buffer-window-list buf))
                (win-and-pts (mapcar (lambda (win)
@@ -153,42 +153,42 @@ If there are no `envrc' buffers, cancel the timer."
           (dolist (wp win-and-pts)
             (set-window-point (car wp) (cdr wp))))))))
 
-(defvar-keymap envrc-list-mode-map
-  :doc "Keymap used in `envrc-list-mode'."
+(defvar-keymap ben-list-mode-map
+  :doc "Keymap used in `ben-list-mode'."
   "n" #'next-line
   "p" #'previous-line
-  "k" #'envrc-list-kill-process
-  "RET" #'envrc-list--object-find)
+  "k" #'ben-list-kill-process
+  "RET" #'ben-list--object-find)
 
-(define-derived-mode envrc-list-mode special-mode "envrc processes"
-  "Mode for displaying `envrc' processes.
+(define-derived-mode ben-list-mode special-mode "ben processes"
+  "Mode for displaying `ben' processes.
 
-Type \\[envrc-list-toggle-auto-update] to automatically update the
+Type \\[ben-list-toggle-auto-update] to automatically update the
 process list.  The time interval for updates can be configured
-via `envrc-list-auto-update-interval'."
+via `ben-list-auto-update-interval'."
   :interactive nil
-  ;; HACK: since `envrc-list--object-action' deals with buffers as symbols
+  ;; HACK: since `ben-list--object-action' deals with buffers as symbols
   ;; using `thing-at-point'. The '.' should be considered as part of a
   ;; symbol.
   (modify-syntax-entry ?. "_")
 
   (setq buffer-read-only t)
-  (setq-local revert-buffer-function #'envrc-list-refresh)
+  (setq-local revert-buffer-function #'ben-list-refresh)
 
-  (if (and envrc-list-auto-update-flag
-           envrc-list-auto-update-interval
-           (not envrc-list-auto-update-timer))
-      (setq envrc-list-auto-update-timer
-            (run-with-idle-timer envrc-list-auto-update-interval t
-                                 'envrc-list-auto-update))))
+  (if (and ben-list-auto-update-flag
+           ben-list-auto-update-interval
+           (not ben-list-auto-update-timer))
+      (setq ben-list-auto-update-timer
+            (run-with-idle-timer ben-list-auto-update-interval t
+                                 'ben-list-auto-update))))
 
 ;;;###autoload
-(defun envrc-list-processes ()
-  "Open list of `envrc' started processes."
+(defun ben-list-processes ()
+  "Open list of `ben' started processes."
   (interactive)
-  (with-current-buffer (get-buffer-create "*envrc-processes*")
+  (with-current-buffer (get-buffer-create "*ben-processes*")
     (let ((inhibit-read-only t))
-      (envrc-list-mode)
+      (ben-list-mode)
       (erase-buffer)
       (make-vtable
        :columns
@@ -204,29 +204,29 @@ via `envrc-list-auto-update-interval'."
                                                  (when obj
                                                    (when-let ((buffers (alist-get 'subscribed obj)))
                                                      buffers)))))
-       :objects-function #'envrc-list--get-processes
+       :objects-function #'ben-list--get-processes
        :formatter (lambda (value column &rest _)
                     (if value
                         (cond
                          ((= column 0)
-                          (propertize value 'face 'envrc-list-pid-face))
+                          (propertize value 'face 'ben-list-pid-face))
                          ((= column 1)
                           (propertize value
-                                      'face 'envrc-list-path-face))
+                                      'face 'ben-list-path-face))
                          ((= column 2)
                           (propertize (string-join (mapcar (lambda (buf)
                                                              (buffer-name buf))
                                                            value)
                                                    ", ")
-                                      'face 'envrc-list-subscribed-face)))
+                                      'face 'ben-list-subscribed-face)))
                       " "))
        :separator-width 2
-       :row-colors '(envrc-list-even-face envrc-list-odd-face)
+       :row-colors '(ben-list-even-face ben-list-odd-face)
        :keymap
        (define-keymap
-                "g" #'envrc-list-refresh))
-      (pop-to-buffer (current-buffer) envrc-list-display-buffer-action))))
+                "g" #'ben-list-refresh))
+      (pop-to-buffer (current-buffer) ben-list-display-buffer-action))))
 
-(provide 'envrc-list)
+(provide 'ben-list)
 
-;;; envrc-list.el ends here
+;;; ben-list.el ends here

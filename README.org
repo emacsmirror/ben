@@ -1,36 +1,36 @@
-#+title: Envrc - asynchronous buffer-local direnv integration for Emacs
+#+title: ben.el - asynchronous buffer-local Direnv integration for Emacs
 
 Asynchronous fork of [[https://github.com/purcell/envrc][envrc]].
 
 * Fork additions
 Whether to load the environments synchronously or asynchronously can be
-configured with the variable ~envrc-async-processing~.
+configured with the variable ~ben-async-processing~.
 
-This also refactors the =envrc= lighter to replace it with a mode line
+This also refactors the =ben= lighter to replace it with a mode line
 indicator. This indicator introduces two new states:
 - A loading state, where a spinner hints buffers that are waiting for the
   environment to load. The widget can be disabled by setting the
-  ~envrc-add-to-mode-line-misc-info~ variable to ~nil~.
+  ~ben-add-to-mode-line-misc-info~ variable to ~nil~.
 - And the denied state, to indicate that an environment has been blocked by
   issuing ~direnv deny~.
 
 In order to ease the management of asynchronous processes, a vtable based
-process UI has been added. It can me invoked with ~M-x envrc-list-processes~.
+process UI has been added. It can me invoked with ~M-x ben-list-processes~.
 
 It provides a few keybindings for interacting with the processes, they are
-defined in ~envrc-list-mode-map~. For now it allows:
+defined in ~ben-list-mode-map~. For now it allows:
 - k :: kill the process of the current line
 - RET :: follow the element under point, PID, path or buffer. Following the PID
   opens a proced showing the selected process and it's children in a tree form
   (this can be seen in the image below.
 - g :: for refreshing the table
 
-The module also provides ~envrc-list-auto-update-flag~ which periodically
-refreshes the =envrc= process UI every ~envrc-list-auto-update-interval~.
+The module also provides ~ben-list-auto-update-flag~ which periodically
+refreshes the =ben= process UI every ~ben-list-auto-update-interval~.
 
 * Screencast
 
-[[file:envrc-async-demo.gif]]
+[[file:ben-async-demo.gif]]
 
 * Introduction
 
@@ -49,76 +49,76 @@ project if desired.
 changes the global Emacs environment, based on tracking what buffer
 you're working on.
 
-Instead, ~envrc.el~ simply sets and stores the right environment in
+Instead, ~ben.el~ simply sets and stores the right environment in
 each buffer, as a buffer-local variable.
 
 From a user perspective, both are well tested and typically work fine,
-but the ~envrc.el~ approach feels cleaner to me.
+but the ~ben.el~ approach feels cleaner to me.
 
-Additionally, at the time of writing, ~envrc.el~ has early TRAMP support,
+Additionally, at the time of writing, ~ben.el~ has early TRAMP support,
 while ~direnv.el~ does not.
 
 * Installation
 
 Installable packages are available via MELPA: do
-=M-x package-install RET envrc RET=.
+=M-x package-install RET ben RET=.
 
 Alternatively, [download][]
 the latest release or clone the repository, and install
-~envrc.el~ with =M-x package-install-file=.
+~ben.el~ with =M-x package-install-file=.
 
 * Usage
 
 Add a snippet like the following at the *bottom of your init.el*:
 #+begin_src emacs-lisp
-(use-package envrc
-  :vc (:url "https://codeberg.org/pastor/envrc")
+(use-package ben
+  :vc (:url "https://codeberg.org/pastor/ben")
   :bind
   (:map
-   envrc-mode-map
-   ("C-c e" . envrc-command-map))
+   ben-mode-map
+   ("C-c e" . ben-command-map))
   :config
-  (setq envrc-indicator '(" [" (:eval (envrc--status)) "]"))
+  (setq ben-indicator '(" [" (:eval (ben--status)) "]"))
   :init
-  (add-hook 'after-init-hook #'envrc-global-mode 99))
+  (add-hook 'after-init-hook #'ben-global-mode 99))
 #+end_src
 
 Why must you enable the global mode *late in your startup sequence* like this? 
-You normally want ~envrc-mode~ to be initialized in each buffer *before*
+You normally want ~ben-mode~ to be initialized in each buffer *before*
 other minor modes like ~flycheck-mode~ which might look for
-executables. Counter-intuitively, this means that ~envrc-global-mode~
+executables. Counter-intuitively, this means that ~ben-global-mode~
 should be enabled *after* other global minor modes, since each
 _prepends_ itself to various hooks.
 
 The global mode will only have an effect if =direnv= is installed and
 available in the default Emacs ~exec-path~. (There is a local minor
-mode ~envrc-mode~, but you should not try to enable this granularly,
+mode ~ben-mode~, but you should not try to enable this granularly,
 e.g. for certain modes or projects, because compilation and other
 buffers might not get set up with the right environment.)
 
-Regarding interaction with the mode, see ~envrc-mode-map~, and the
-commands ~envrc-reload~, ~envrc-allow~ and ~envrc-deny~. (There's also
-~envrc-reload-all~ as a "nuclear" reset, for now!)
+Regarding interaction with the mode, see ~ben-mode-map~, and the
+commands ~ben-reload~, ~ben-allow~ and ~ben-deny~. (There's also
+~ben-reload-all~ as a "nuclear" reset, for now!)
 
 In particular, you can enable keybindings for the above commands by
-binding your preferred prefix to ~envrc-command-map~ in
-~envrc-mode-map~, e.g.
+binding your preferred prefix to ~ben-command-map~ in
+~ben-mode-map~, e.g.
 
 #+begin_src emacs-lisp
-(with-eval-after-load 'envrc
-  (define-key envrc-mode-map (kbd "C-c e") 'envrc-command-map))
+(with-eval-after-load 'ben
+  (define-key ben-mode-map (kbd "C-c e") 'ben-command-map))
 #+end_src
 
 * Troubleshooting
 
 If you find that a particular Emacs command isn't picking up the
-environment of your current buffer, and you're sure that ~envrc-mode~
+environment of your current buffer, and you're sure that ~ben-mode~
 is active in that buffer, then it's possible you've found code that
 runs a process in a temp buffer and neglects to propagate your
 environment to that buffer before doing so.
 
 A couple of common Emacs commands that suffer from this defect are also
-patched directly via advice in ~envrc.el~ — ~shell-command-to-string~
+patched directly via advice in ~ben.el~ — ~shell-command-to-string~
 is a prominent example!
 
 The ~inheritenv~ package was designed to handle this case in general.
@@ -140,15 +140,15 @@ buffer. If this value could be correctly maintained in all buffers
 based on their various respective ~.envrc~ files, then buffers across
 multiple projects could simultaneously be "connected" to the
 environments of their corresponding project directories. I wrote
-~envrc.el~ to explore this approach.
+~ben.el~ to explore this approach.
 
-~envrc.el~ uses a global minor mode (~envrc-global-mode~) to hook into
+~ben.el~ uses a global minor mode (~ben-global-mode~) to hook into
 practically every buffer created by Emacs, including hidden and
 temporary ones. When a buffer is found to be "inside" an
 ~.envrc~-managed project, ~process-environment~ is set buffer-locally
 by running ~direnv~, the results of which are also cached indefinitely
 so that this is not too costly overall. Each buffer has a local minor
-mode (~envrc-mode~) with an indicator which displays whether or not a
+mode (~ben-mode~) with an indicator which displays whether or not a
 direnv is in effect in that buffer. (Hooking into every buffer is
 important, rather than just those with certain major modes, since
 separate temporary, compilation and repl buffers are routinely used
@@ -156,7 +156,7 @@ for executing processes.)
 
 This approach also has some trade-offs:
 
-* Buffers like ~*Help*~ will have ~envrc-mode~ enabled based on the
+* Buffers like ~*Help*~ will have ~ben-mode~ enabled based on the
   directory of the buffer which caused them to be created initially,
   and then those buffers often live for a long time. If you launch
   programs from such buffers while working on a different project, the
@@ -169,8 +169,8 @@ This approach also has some trade-offs:
 
 * ~direnv~ updates are not automatic. ~direnv.el~ re-executes ~direnv~
   when switching between buffers that visit files in different
-  directories, whereas ~envrc-mode~ caches the environment until the
-  user refreshes it explicitly with ~envrc-reload~.
+  directories, whereas ~ben-mode~ caches the environment until the
+  user refreshes it explicitly with ~ben-reload~.
 
 Overall this approach works well in practice, and feels cleaner than
 trying to strategically modify the global environment.

@@ -1,12 +1,14 @@
-;;; envrc.el --- Support for `direnv' that operates buffer-locally  -*- lexical-binding: t; -*-
+;;; ben.el --- Support for `direnv' that operates buffer-locally  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020  Steve Purcell
+;; Copyright (c) 2026 Sergio Pastor Pérez <sergio.pastorperez@gmail.com>
 
 ;; Author: Steve Purcell <steve@sanityinc.com>
+;;         Sergio Pastor Pérez <sergio.pastorperez@gmail.com>
 ;; Keywords: processes, tools
-;; Homepage: https://github.com/purcell/envrc
+;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "27.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.1
+;; Package-Version: 0.12.2
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -23,7 +25,7 @@
 
 ;;; Commentary:
 
-;; Use direnv (https://direnv.net/) to set environment variables on a
+;; Use direnv (https://direnv.net) to set environment variables on a
 ;; per-buffer basis.  This means that when you work across multiple
 ;; projects which have `.envrc` files, all processes launched from the
 ;; buffers "in" those projects will be executed with the environment
@@ -31,16 +33,16 @@
 ;; of linters and other tools to be installed in each project if
 ;; desired.
 
-;; Enable `envrc-global-mode' late in your startup files.  For
-;; interaction with this functionality, see `envrc-mode-map', and the
-;; commands `envrc-reload', `envrc-allow' and `envrc-deny'.
+;; Enable `ben-global-mode' late in your startup files.  For
+;; interaction with this functionality, see `ben-mode-map', and the
+;; commands `ben-reload', `ben-allow' and `ben-deny'.
 
 ;; In particular, you can enable keybindings for the above commands by
-;; binding your preferred prefix to `envrc-command-map' in
-;; `envrc-mode-map', e.g.
+;; binding your preferred prefix to `ben-command-map' in
+;; `ben-mode-map', e.g.
 
-;;    (with-eval-after-load 'envrc
-;;      (define-key envrc-mode-map (kbd "C-c e") 'envrc-command-map))
+;;    (with-eval-after-load 'ben
+;;      (define-key ben-mode-map (kbd "C-c e") 'ben-command-map))
 
 ;;; Code:
 
@@ -67,171 +69,171 @@
 
 ;;; Custom vars and minor modes
 
-(defgroup envrc nil
+(defgroup ben nil
   "Apply per-buffer environment variables using the direnv tool."
   :group 'processes)
 
-(defcustom envrc-debug nil
+(defcustom ben-debug nil
   "Whether or not to output debug messages while in operation.
-Messages are written into the *envrc-debug* buffer."
+Messages are written into the *ben-debug* buffer."
   :type 'boolean)
 
-(defcustom envrc-add-to-mode-line-misc-info t
-  "When non-nil, append the envrc indicator to the mode line.
+(defcustom ben-add-to-mode-line-misc-info t
+  "When non-nil, append the ben indicator to the mode line.
 Experienced users can set this to a nil value and then include the
-`envrc-indicator' anywhere they want in `mode-line-format' or related."
-  :group 'envrc
+`ben-indicator' anywhere they want in `mode-line-format' or related."
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-async-processing t
+(defcustom ben-async-processing t
   "Whether or not to update the environment asynchronously."
-  :group 'envrc
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-async-prompt-before-kill t
-  "Whether or not to prompt the user before killing running envrc processes."
-  :group 'envrc
+(defcustom ben-async-prompt-before-kill t
+  "Whether or not to prompt the user before killing running ben processes."
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-status-frames '("=  " "== " "===" " ==" "  =" "   ")
+(defcustom ben-status-frames '("=  " "== " "===" " ==" "  =" "   ")
   "List of frames for the spinner."
-  :group 'envrc
+  :group 'ben
   :type '(repeat string))
 
-(defcustom envrc-update-on-eshell-directory-change t
-  "Whether envrc will update environment when changing directory in eshell."
+(defcustom ben-update-on-eshell-directory-change t
+  "Whether ben will update environment when changing directory in eshell."
   :type 'boolean)
 
-(defcustom envrc-show-summary-in-minibuffer t
+(defcustom ben-show-summary-in-minibuffer t
   "When non-nil, show a summary of the changes made by direnv in the minibuffer."
-  :group 'envrc
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-disable-in-minibuffer nil
+(defcustom ben-disable-in-minibuffer nil
   "Whether or not to load environments in the minibuffer.
 
 A non-nil value will prevent the envrionment from propagating into the
 minibuffer.  Note that `completing-read' will not provide completion
 using the new environment."
-  :group 'envrc
+  :group 'ben
   :type 'boolean)
 
-(defcustom envrc-direnv-executable "direnv"
-  "The direnv executable used by envrc."
+(defcustom ben-direnv-executable "direnv"
+  "The direnv executable used by ben."
   :type 'string)
 
-(define-obsolete-variable-alias 'envrc--lighter 'envrc-indicator "2021-05-17")
+(define-obsolete-variable-alias 'ben--lighter 'ben-indicator "2021-05-17")
 
-(defcustom envrc-indicator '(" envrc[" (:eval (envrc--status)) "]")
-  "The mode line lighter for `envrc-mode'.
+(defcustom ben-indicator '(" ben[" (:eval (ben--status)) "]")
+  "The mode line lighter for `ben-mode'.
 You can set this to nil to disable the lighter."
   :type 'sexp)
-(put 'envrc-indicator 'risky-local-variable t)
+(put 'ben-indicator 'risky-local-variable t)
 
-(defcustom envrc-none-indicator '((:propertize "none" face envrc-mode-line-none-face))
-  "Construct spec used by the default `envrc-indicator' when envrc is inactive."
+(defcustom ben-none-indicator '((:propertize "none" face ben-mode-line-none-face))
+  "Construct spec used by the default `ben-indicator' when ben is inactive."
   :type 'sexp)
 
-(defcustom envrc-on-indicator '((:propertize "on" face envrc-mode-line-on-face))
-  "Construct spec used by the default `envrc-indicator' when envrc is on."
+(defcustom ben-on-indicator '((:propertize "on" face ben-mode-line-on-face))
+  "Construct spec used by the default `ben-indicator' when ben is on."
   :type 'sexp)
 
-(defcustom envrc-denied-indicator '((:propertize "denied" face envrc-mode-line-denied-face))
-  "Construct spec used by the default `envrc-indicator' when envrc is blocked."
+(defcustom ben-denied-indicator '((:propertize "denied" face ben-mode-line-denied-face))
+  "Construct spec used by the default `ben-indicator' when ben is blocked."
   :type 'sexp)
 
-(defcustom envrc-error-indicator '((:propertize "error" face envrc-mode-line-error-face))
-  "Construct spec used by the default `envrc-indicator' when envrc has errored."
+(defcustom ben-error-indicator '((:propertize "error" face ben-mode-line-error-face))
+  "Construct spec used by the default `ben-indicator' when ben has errored."
   :type 'sexp)
 
-(defcustom envrc-command-map
+(defcustom ben-command-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "a") 'envrc-allow)
-    (define-key map (kbd "d") 'envrc-deny)
-    (define-key map (kbd "r") 'envrc-reload)
-    (define-key map (kbd "l") 'envrc-show-log)
+    (define-key map (kbd "a") 'ben-allow)
+    (define-key map (kbd "d") 'ben-deny)
+    (define-key map (kbd "r") 'ben-reload)
+    (define-key map (kbd "l") 'ben-show-log)
     map)
-  "Keymap for commands in `envrc-mode'.
-See `envrc-mode-map' for how to assign a prefix binding to these."
+  "Keymap for commands in `ben-mode'.
+See `ben-mode-map' for how to assign a prefix binding to these."
   :type '(restricted-sexp :match-alternatives (keymapp)))
-(fset 'envrc-command-map envrc-command-map)
+(fset 'ben-command-map ben-command-map)
 
-(defcustom envrc-mode-map (make-sparse-keymap)
-  "Keymap for `envrc-mode'.
-To access `envrc-command-map' from this map, give it a prefix keybinding,
-e.g. (define-key envrc-mode-map (kbd \"C-c e\") \\='envrc-command-map)"
+(defcustom ben-mode-map (make-sparse-keymap)
+  "Keymap for `ben-mode'.
+To access `ben-command-map' from this map, give it a prefix keybinding,
+e.g. (define-key ben-mode-map (kbd \"C-c e\") \\='ben-command-map)"
   :type '(restricted-sexp :match-alternatives (keymapp)))
 
-(defcustom envrc-remote nil
+(defcustom ben-remote nil
   "Whether or not to enable direnv over TRAMP."
   :type 'boolean)
 
-(defcustom envrc-supported-tramp-methods '("ssh")
-  "Tramp connection methods that are supported by envrc."
+(defcustom ben-supported-tramp-methods '("ssh")
+  "Tramp connection methods that are supported by ben."
   :type '(repeat string))
 
-(defvar envrc--used-mode-line-construct nil
+(defvar ben--used-mode-line-construct nil
   "Mode line construct last added by `notmuch-indicator-mode'.")
 
 ;;;###autoload
-(define-minor-mode envrc-mode
+(define-minor-mode ben-mode
   "A local minor mode in which env vars are set by direnv."
   :init-value nil
-  :lighter 'envrc
-  :keymap envrc-mode-map
-  (if envrc-mode
+  :lighter 'ben
+  :keymap ben-mode-map
+  (if ben-mode
       (progn
-        (when envrc-add-to-mode-line-misc-info
-          (setq envrc--used-mode-line-construct envrc-indicator)
+        (when ben-add-to-mode-line-misc-info
+          (setq ben--used-mode-line-construct ben-indicator)
            ;; NOTE since this is a minor mode, `mode-line-misc-info' needs to be
            ;; controlled locally.
           (make-local-variable 'mode-line-misc-info)
-          (add-to-list 'mode-line-misc-info envrc-indicator))
-        (envrc--update)
-        (when (and (derived-mode-p 'eshell-mode) envrc-update-on-eshell-directory-change)
-          (add-hook 'eshell-directory-change-hook #'envrc--update nil t)))
-    (setq mode-line-misc-info (delete envrc--used-mode-line-construct mode-line-misc-info))
-    (envrc--clear (current-buffer))
-    (remove-hook 'eshell-directory-change-hook #'envrc--update t)))
+          (add-to-list 'mode-line-misc-info ben-indicator))
+        (ben--update)
+        (when (and (derived-mode-p 'eshell-mode) ben-update-on-eshell-directory-change)
+          (add-hook 'eshell-directory-change-hook #'ben--update nil t)))
+    (setq mode-line-misc-info (delete ben--used-mode-line-construct mode-line-misc-info))
+    (ben--clear (current-buffer))
+    (remove-hook 'eshell-directory-change-hook #'ben--update t)))
 
 ;;;###autoload
-(define-globalized-minor-mode envrc-global-mode envrc-mode
+(define-globalized-minor-mode ben-global-mode ben-mode
   (lambda ()
     (when
         (cond
-         ((and (minibufferp) envrc-disable-in-minibuffer) nil)
+         ((and (minibufferp) ben-disable-in-minibuffer) nil)
          ((file-remote-p default-directory)
-          (and envrc-remote
+          (and ben-remote
                (seq-contains-p
-                envrc-supported-tramp-methods
+                ben-supported-tramp-methods
                 (with-parsed-tramp-file-name default-directory vec vec-method))))
-         (t (executable-find envrc-direnv-executable)))
-      (envrc-mode 1)))
+         (t (executable-find ben-direnv-executable)))
+      (ben-mode 1)))
   :predicate t)
 
-(defface envrc-mode-line-on-face '((t :inherit success))
+(defface ben-mode-line-on-face '((t :inherit success))
   "Face used in mode line to indicate that direnv is in effect.")
 
-(defface envrc-mode-line-denied-face '((t :inherit shadow))
+(defface ben-mode-line-denied-face '((t :inherit shadow))
   "Face used in mode line to indicate that direnv blocking env.")
 
-(defface envrc-mode-line-error-face '((t :inherit error))
+(defface ben-mode-line-error-face '((t :inherit error))
   "Face used in mode line to indicate that direnv failed.")
 
-(defface envrc-mode-line-none-face '((t :inherit warning))
+(defface ben-mode-line-none-face '((t :inherit warning))
   "Face used in mode line to indicate that direnv is not active.")
 
-(defface envrc-mode-line-loading-face '((t :inherit mode-line-emphasis))
+(defface ben-mode-line-loading-face '((t :inherit mode-line-emphasis))
   "Face used in mode line to indicate that direnv is loading the environment.")
 
 ;;; Global state
 
-(defvar envrc--cache (make-hash-table :test 'equal :size 10)
-  "Known envrc directories and their direnv results.
-The values are as produced by `envrc--export'.")
+(defvar ben--cache (make-hash-table :test 'equal :size 10)
+  "Known ben directories and their direnv results.
+The values are as produced by `ben--export'.")
 
-(defvar envrc--processes (make-hash-table :test 'equal :size 10)
-  "Asynchonous processes started by envrc.
+(defvar ben--processes (make-hash-table :test 'equal :size 10)
+  "Asynchonous processes started by ben.
 Each entry uses an environment directory as key.
 
 Each value of this table is an alist of
@@ -242,109 +244,109 @@ environment applied once the async process finishes.")
 
 ;;; Local state
 
-(defvar-local envrc--status 'none
+(defvar-local ben--status 'none
   "Symbol indicating state of the current buffer's direnv.
 One of \\='(none loading on error).")
 
-(defvar-local envrc--remote-path nil
+(defvar-local ben--remote-path nil
   "Buffer local variable for remote path.
 If set, this will override `tramp-remote-path' via connection
 local variables.")
 
 ;;; Internals
 
-(defvar envrc--status-timer nil
+(defvar ben--status-timer nil
   "Timer for updating the spinner.")
 
-(defvar envrc--status-index 0
+(defvar ben--status-index 0
   "Current index in the spinner frames list.")
 
-(defvar envrc--loading-indicator nil
+(defvar ben--loading-indicator nil
   "Current frame to display during the loading indicator state.")
 
-(defun envrc--status ()
-  "Return a colourised version of `envrc--status' for use in the mode line."
-  (pcase envrc--status
-    (`none envrc-none-indicator)
-    (`loading envrc--loading-indicator)
-    (`on envrc-on-indicator)
-    (`denied envrc-denied-indicator)
-    (`error envrc-error-indicator)))
+(defun ben--status ()
+  "Return a colourised version of `ben--status' for use in the mode line."
+  (pcase ben--status
+    (`none ben-none-indicator)
+    (`loading ben--loading-indicator)
+    (`on ben-on-indicator)
+    (`denied ben-denied-indicator)
+    (`error ben-error-indicator)))
 
-(defvar envrc--loading-buf-list '()
+(defvar ben--loading-buf-list '()
   "List of buffers that are loading an environment.")
 
-(defun envrc--status-update-buf (buf)
+(defun ben--status-update-buf (buf)
   "Update the spinner in BUF's mode line."
-  (let ((spinner (nth envrc--status-index envrc-status-frames)))
+  (let ((spinner (nth ben--status-index ben-status-frames)))
     (with-current-buffer buf
-      (setq envrc--loading-indicator `((:propertize ,spinner face envrc-mode-line-loading-face))
-            envrc--status 'loading)
+      (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
+            ben--status 'loading)
       (force-mode-line-update))))
 
-(defun envrc-status-update ()
+(defun ben-status-update ()
   "Update the spinner in the mode line.
 ENV-DIR is the directory where to update the status"
   (let (keys)
     (maphash (lambda (key _value)
                (push key keys))
-             envrc--processes)
+             ben--processes)
     (walk-windows (lambda (win)
                     (let ((win-buf (window-buffer win)))
                       (unless (minibufferp win-buf)
                         (with-current-buffer win-buf
-                          (when (member (envrc--find-env-dir) keys)
-                            (envrc--status-update-buf win-buf)))))))))
+                          (when (member (ben--find-env-dir) keys)
+                            (ben--status-update-buf win-buf)))))))))
 
-(defun envrc-status-start ()
+(defun ben-status-start ()
   "Start the spinner and update it periodically.
 ENV-DIR is the directory where to update the status."
-  (unless envrc--status-timer
-    (setq envrc--status-index 0)
-    (setq envrc--status-timer
+  (unless ben--status-timer
+    (setq ben--status-index 0)
+    (setq ben--status-timer
           (run-with-timer 0 0.1 (lambda ()
-                                  (setq envrc--status-index
-                                        (mod (1+ envrc--status-index)
-                                             (length envrc-status-frames)))
-                                  (envrc-status-update))))))
+                                  (setq ben--status-index
+                                        (mod (1+ ben--status-index)
+                                             (length ben-status-frames)))
+                                  (ben-status-update))))))
 
-(defun envrc-status-stop (env-dir)
+(defun ben-status-stop (env-dir)
   "Stop the spinner and remove it from the mode line.
 ENV-DIR is the directory where to update the status."
-  (when envrc--status-timer
-    (cancel-timer envrc--status-timer)
-    (setq envrc--status-timer nil))
+  (when ben--status-timer
+    (cancel-timer ben--status-timer)
+    (setq ben--status-timer nil))
 
-  (let ((status envrc--status))
-    (dolist (buf (envrc--mode-buffers))
+  (let ((status ben--status))
+    (dolist (buf (ben--mode-buffers))
       (with-current-buffer buf
-        (when (equal (envrc--find-env-dir) env-dir)
-          (setq envrc--status status)
+        (when (equal (ben--find-env-dir) env-dir)
+          (setq ben--status status)
           (force-mode-line-update))))))
 
 
-(defun envrc--env-dir-p (dir)
+(defun ben--env-dir-p (dir)
   "Return non-nil if DIR contains a config file for direnv."
   (or
    (file-exists-p (expand-file-name ".envrc" dir))
    (file-exists-p (expand-file-name ".env" dir))))
 
-(defun envrc--find-env-dir ()
-  "Return the envrc directory for the current buffer, if any.
+(defun ben--find-env-dir ()
+  "Return the ben directory for the current buffer, if any.
 This is based on a file scan.  In most cases we prefer to use the
 cached list of known directories.
 
 Regardless of buffer file name, we always use
 `default-directory': the two should always match, unless the user
 called `cd'"
-  (let ((env-dir (locate-dominating-file default-directory #'envrc--env-dir-p)))
+  (let ((env-dir (locate-dominating-file default-directory #'ben--env-dir-p)))
     (when env-dir
       ;; `locate-dominating-file' appears to sometimes return abbreviated paths, e.g. with ~
       (setq env-dir (expand-file-name env-dir)))
     env-dir))
 
-(defun envrc--find-deny-hash (env-dir)
-  "Return the envrc file hash from ENV-DIR."
+(defun ben--find-deny-hash (env-dir)
+  "Return the ben file hash from ENV-DIR."
   (when-let* ((file-path (or (expand-file-name ".envrc" env-dir)
                              (expand-file-name ".env" env-dir)))
               (contents (with-temp-buffer
@@ -352,45 +354,45 @@ called `cd'"
                           (buffer-string))))
     (secure-hash 'sha256 contents)))
 
-(defun envrc--denied-p (env-dir)
+(defun ben--denied-p (env-dir)
   "Return TRUE if ENV-DIR is blocked."
-  (let ((deny-hash (envrc--find-deny-hash env-dir))
+  (let ((deny-hash (ben--find-deny-hash env-dir))
         (deny-path (concat (or (getenv "XDG_DATA_HOME")
                                (concat (getenv "HOME") "/.local/share"))
                            "/direnv/deny")))
       (locate-file deny-hash
                    (list deny-path))))
 
-(defun envrc--cache-key (env-dir process-env)
+(defun ben--cache-key (env-dir process-env)
   "Get a hash key for the result of invoking direnv in ENV-DIR with PROCESS-ENV.
 PROCESS-ENV should be the environment in which direnv was run,
 since its output can vary according to its initial environment."
   (string-join (cons env-dir process-env) "\0"))
 
-(defun envrc--update-async ()
+(defun ben--update-async ()
   "Update the current buffer's env asynchronously if it is managed by direnv.
-All envrc.el-managed buffers with this env will have their
+All ben.el-managed buffers with this env will have their
 environments updated."
   (let* ((cur-buf (current-buffer))
-         (env-dir (envrc--find-env-dir))
-         (cache-key (envrc--cache-key env-dir (default-value 'process-environment)))
-         (cache (gethash cache-key envrc--cache))
+         (env-dir (ben--find-env-dir))
+         (cache-key (ben--cache-key env-dir (default-value 'process-environment)))
+         (cache (gethash cache-key ben--cache))
          (update-callback
           (lambda (env)
             (unless cache
-              (puthash cache-key env envrc--cache))
+              (puthash cache-key env ben--cache))
             (unwind-protect
                 (when (buffer-live-p cur-buf)
-                  (envrc--apply cur-buf env))
-              (let ((subscribed (alist-get 'subscribed (gethash env-dir envrc--processes))))
+                  (ben--apply cur-buf env))
+              (let ((subscribed (alist-get 'subscribed (gethash env-dir ben--processes))))
                 (dolist (buf subscribed)
                   (when (buffer-live-p buf)
-                    (envrc--apply buf env))))))))
+                    (ben--apply buf env))))))))
     (if env-dir
         (if cache
             (funcall update-callback cache)
-          (let ((running-process (alist-get 'process (gethash env-dir envrc--processes)))
-                (subscribed (alist-get 'subscribed (gethash env-dir envrc--processes))))
+          (let ((running-process (alist-get 'process (gethash env-dir ben--processes)))
+                (subscribed (alist-get 'subscribed (gethash env-dir ben--processes))))
             (if running-process
                 (progn
                   (unless (memq cur-buf subscribed)
@@ -398,57 +400,57 @@ environments updated."
                   (puthash env-dir
                            `((process . ,running-process)
                              (subscribed . ,subscribed))
-                           envrc--processes))
-              (envrc--export-async update-callback env-dir))))
+                           ben--processes))
+              (ben--export-async update-callback env-dir))))
       (funcall update-callback 'none))))
 
-(defun envrc--update-sync ()
+(defun ben--update-sync ()
   "Update the current buffer's env synchronously if it is managed by direnv.
-All envrc.el-managed buffers with this env will have their
+All ben.el-managed buffers with this env will have their
 environments updated."
-  (let* ((env-dir (envrc--find-env-dir))
+  (let* ((env-dir (ben--find-env-dir))
          (result
           (if env-dir
-              (let ((cache-key (envrc--cache-key env-dir (default-value 'process-environment))))
-                (pcase (gethash cache-key envrc--cache 'missing)
-                  (`missing (let ((calculated (envrc--export env-dir)))
-                              (puthash cache-key calculated envrc--cache)
+              (let ((cache-key (ben--cache-key env-dir (default-value 'process-environment))))
+                (pcase (gethash cache-key ben--cache 'missing)
+                  (`missing (let ((calculated (ben--export env-dir)))
+                              (puthash cache-key calculated ben--cache)
                               calculated))
                   (cached cached)))
             'none)))
-    (envrc--apply (current-buffer) result)))
+    (ben--apply (current-buffer) result)))
 
-(defun envrc--update ()
+(defun ben--update ()
   "Update the current buffer's environment if it is managed by direnv.
-All envrc.el-managed buffers with this env will have their
+All ben.el-managed buffers with this env will have their
 environments updated.
 Synchronously or asynchronously according to the value of
-`envrc-async-processing'."
-  (if envrc-async-processing
-      (envrc--update-async)
-    (envrc--update-sync)))
+`ben-async-processing'."
+  (if ben-async-processing
+      (ben--update-async)
+    (ben--update-sync)))
 
-(defmacro envrc--at-end-of-special-buffer (name &rest body)
+(defmacro ben--at-end-of-special-buffer (name &rest body)
   "At the end of `special-mode' buffer NAME, execute BODY.
-To avoid confusion, `envrc-mode' is explicitly disabled in the buffer."
+To avoid confusion, `ben-mode' is explicitly disabled in the buffer."
   (declare (indent 1))
   `(with-current-buffer (get-buffer-create ,name)
      (unless (derived-mode-p 'special-mode)
        (special-mode))
-     (when envrc-mode (envrc-mode -1))
+     (when ben-mode (ben-mode -1))
      (goto-char (point-max))
      (let ((inhibit-read-only t))
        ,@body)))
 
-(defun envrc--debug (msg &rest args)
-  "A version of `message' which does nothing if `envrc-debug' is nil.
+(defun ben--debug (msg &rest args)
+  "A version of `message' which does nothing if `ben-debug' is nil.
 MSG and ARGS are as for that function."
-  (when envrc-debug
-    (envrc--at-end-of-special-buffer "*envrc-debug*"
+  (when ben-debug
+    (ben--at-end-of-special-buffer "*ben-debug*"
       (insert (apply 'format msg args))
       (newline))))
 
-(defun envrc--summarise-changes (items)
+(defun ben--summarise-changes (items)
   "Create a summary string for ITEMS."
   (if items
       (cl-loop for (name . val) in items
@@ -466,31 +468,31 @@ MSG and ARGS are as for that function."
                                        finally return (string-join strings " ")))
     "no changes"))
 
-(defun envrc--show-summary (result directory)
+(defun ben--show-summary (result directory)
   "Summarise successful RESULT in the minibuffer.
 DIRECTORY is the directory in which the environment changes."
   (message "direnv: %s %s"
-           (envrc--summarise-changes result)
+           (ben--summarise-changes result)
            (propertize (concat "(" (abbreviate-file-name (directory-file-name directory)) ")")
                        'face 'font-lock-comment-face)))
 
-(defun envrc--export-async (callback env-dir)
+(defun ben--export-async (callback env-dir)
   "Export the env vars for ENV-DIR using direnv.
 Return value is either \\='error, \\='none, or an alist of environment
 variable names and values.
 
 CALLBACK the function which will get the return value."
   (let* ((default-directory env-dir)
-         (stdout (generate-new-buffer "*envrc-export*"))
-         (stderr (generate-new-buffer "*envrc-export-stderr*"))
+         (stdout (generate-new-buffer "*ben-export*"))
+         (stderr (generate-new-buffer "*ben-export-stderr*"))
          (export-callback
           (lambda (exit-code)
-            (unless (envrc--env-dir-p env-dir)
+            (unless (ben--env-dir-p env-dir)
               (error "%s is not a directory with a .envrc" env-dir))
             (message "Running direnv in %s ..." env-dir)
             (let (result)
               (with-current-buffer stdout
-                (envrc--debug "Direnv exited with %s and stderr=%S, stdout=%S"
+                (ben--debug "Direnv exited with %s and stderr=%S, stdout=%S"
                               exit-code
                               (with-current-buffer stderr
                                 (buffer-string))
@@ -501,20 +503,20 @@ CALLBACK the function which will get the return value."
                              (setq result 'none)
                            (goto-char (point-min))
                            (prog1
-                               (if (envrc--denied-p env-dir)
+                               (if (ben--denied-p env-dir)
                                    (setq result 'denied)
                                  (setq result (let ((json-key-type 'string)) (json-read-object))))
-                             (when envrc-show-summary-in-minibuffer
-                               (envrc--show-summary result env-dir))))))
+                             (when ben-show-summary-in-minibuffer
+                               (ben--show-summary result env-dir))))))
                       ((eq 9 exit-code)
                        (message "Direnv killed in %s" env-dir)
-                       (if (envrc--denied-p env-dir)
+                       (if (ben--denied-p env-dir)
                            (setq result 'denied)
                          (setq result 'error)))
                       (t
                        (message "Direnv failed in %s" env-dir)
                        (setq result 'error)))
-                (envrc--at-end-of-special-buffer "*envrc*"
+                (ben--at-end-of-special-buffer "*ben*"
                   (insert "──── " (format-time-string "%Y-%m-%d %H:%M:%S") " ──── " env-dir " ────\n\n")
                   (let ((initial-pos (point))
                         ansi-color-context)
@@ -525,7 +527,7 @@ CALLBACK the function which will get the return value."
                   (insert "\n\n")
                   ;; Since the async processing interface allows the user to
                   ;; interactively kill the process, do not popup the buffer
-                  ;; when `envrc-async-processing' is true.
+                  ;; when `ben-async-processing' is true.
                   (when (and (numberp exit-code) (and (/= 0 exit-code)
                                                       (/= 9 exit-code)))
                     (display-buffer (current-buffer)))))
@@ -535,27 +537,27 @@ CALLBACK the function which will get the return value."
          (sentinel (lambda (process msg)
                      (funcall callback
                               (funcall export-callback
-                                       (envrc--async-process-sentinel process msg))))))
-    (envrc--start-process-with-global-env sentinel stdout stderr envrc-direnv-executable "export" "json")))
+                                       (ben--async-process-sentinel process msg))))))
+    (ben--start-process-with-global-env sentinel stdout stderr ben-direnv-executable "export" "json")))
 
-(defun envrc--export (env-dir)
+(defun ben--export (env-dir)
   "Export the env vars for ENV-DIR using direnv.
 Return value is either \\='error, \\='none, or an alist of environment
 variable names and values."
-  (unless (envrc--env-dir-p env-dir)
+  (unless (ben--env-dir-p env-dir)
     (error "%s is not a directory with a .envrc" env-dir))
   (message "Running direnv in %s ... (C-g to abort)" env-dir)
-  (let ((stderr-file (make-temp-file "envrc"))
+  (let ((stderr-file (make-temp-file "ben"))
         result)
     (unwind-protect
         (let ((default-directory env-dir))
           (with-temp-buffer
             (let ((exit-code (condition-case nil
-                                 (envrc--call-process-with-global-env envrc-direnv-executable nil (list t stderr-file) nil "export" "json")
+                                 (ben--call-process-with-global-env ben-direnv-executable nil (list t stderr-file) nil "export" "json")
                                (quit
                                 (message "interrupted!!")
                                 'interrupted))))
-              (envrc--debug "Direnv exited with %s and stderr=%S, stdout=%S"
+              (ben--debug "Direnv exited with %s and stderr=%S, stdout=%S"
                             exit-code
                             (with-temp-buffer
                               (insert-file-contents stderr-file)
@@ -567,20 +569,20 @@ variable names and values."
                            (setq result 'none)
                          (goto-char (point-min))
                          (prog1
-                             (if (envrc--denied-p env-dir)
+                             (if (ben--denied-p env-dir)
                                  (setq result 'denied)
                                (setq result (let ((json-key-type 'string)) (json-read-object))))
-                           (when envrc-show-summary-in-minibuffer
-                             (envrc--show-summary result env-dir))))))
+                           (when ben-show-summary-in-minibuffer
+                             (ben--show-summary result env-dir))))))
                     ((eq 9 exit-code)
                      (message "Direnv killed in %s" env-dir)
-                     (if (envrc--denied-p env-dir)
+                     (if (ben--denied-p env-dir)
                          (setq result 'denied)
                        (setq result 'error)))
                     (t
                      (message "Direnv failed in %s" env-dir)
                      (setq result 'error)))
-              (envrc--at-end-of-special-buffer "*envrc*"
+              (ben--at-end-of-special-buffer "*ben*"
                 (insert "──── " (format-time-string "%Y-%m-%d %H:%M:%S") " ──── " env-dir " ────\n\n")
                 (let ((initial-pos (point)))
                   (insert-file-contents stderr-file)
@@ -598,7 +600,7 @@ variable names and values."
 (defvar eshell-path-env)
 (defvar Info-directory-list)
 
-(defun envrc--merged-environment (process-env pairs)
+(defun ben--merged-environment (process-env pairs)
   "Make a `process-environment' value that merges PROCESS-ENV with PAIRS.
 PAIRS is an alist obtained from direnv's output.
 Values from PROCESS-ENV will be included, but their values will
@@ -612,8 +614,8 @@ also appear in PAIRS."
                   pairs)
           process-env))
 
-(defun envrc--clear (buf)
-  "Remove any effects of `envrc-mode' from BUF."
+(defun ben--clear (buf)
+  "Remove any effects of `ben-mode' from BUF."
   (with-current-buffer buf
     (kill-local-variable 'exec-path)
     (kill-local-variable 'process-environment)
@@ -624,18 +626,18 @@ also appear in PAIRS."
         (kill-local-variable 'eshell-path-env)))))
 
 
-(defun envrc--apply (buf result)
-  "Update BUF with RESULT, which is a result of `envrc--export'."
+(defun ben--apply (buf result)
+  "Update BUF with RESULT, which is a result of `ben--export'."
   (with-current-buffer buf
-    (setq-local envrc--status (if (listp result) 'on result))
-    (envrc--clear buf)
+    (setq-local ben--status (if (listp result) 'on result))
+    (ben--clear buf)
     (if (memq result '(none error denied))
         (progn
-          (envrc--debug "[%s] reset environment to default" buf))
-      (envrc--debug "[%s] applied merged environment" buf)
+          (ben--debug "[%s] reset environment to default" buf))
+      (ben--debug "[%s] applied merged environment" buf)
       (let* ((remote (when-let* ((fn (buffer-file-name buf)))
                        (file-remote-p fn)))
-             (env (envrc--merged-environment
+             (env (ben--merged-environment
                    (default-value (if remote
                                       'tramp-remote-process-environment
                                     'process-environment))
@@ -647,7 +649,7 @@ also appear in PAIRS."
           (setq-local process-environment env))
         ;; Get PATH from the merged environment: direnv may not have changed it
         (if remote
-            (setq-local envrc--remote-path parsed-path)
+            (setq-local ben--remote-path parsed-path)
           (setq-local exec-path parsed-path))
         (cond ((derived-mode-p 'eshell-mode)
                (if (fboundp 'eshell-set-path)
@@ -659,78 +661,78 @@ also appear in PAIRS."
                              (append (seq-filter #'identity (parse-colon-path info-path))
                                      (default-value 'Info-directory-list))))))))))
 
-(defun envrc--update-env (env-dir)
+(defun ben--update-env (env-dir)
   "Refresh the state of the direnv in ENV-DIR and apply in all relevant buffers."
-  (envrc--debug "Invalidating cache for env %s" env-dir)
-  (cl-loop for k being the hash-keys of envrc--cache
+  (ben--debug "Invalidating cache for env %s" env-dir)
+  (cl-loop for k being the hash-keys of ben--cache
            if (string-prefix-p (concat env-dir "\0") k)
-           do (remhash k envrc--cache))
-  (envrc--debug "Refreshing all buffers in env  %s" env-dir)
-  (dolist (buf (envrc--mode-buffers))
+           do (remhash k ben--cache))
+  (ben--debug "Refreshing all buffers in env  %s" env-dir)
+  (dolist (buf (ben--mode-buffers))
     (with-current-buffer buf
-      (when (string= (envrc--find-env-dir) env-dir)
-        (envrc--update)))))
+      (when (string= (ben--find-env-dir) env-dir)
+        (ben--update)))))
 
-(defun envrc--mode-buffers ()
-  "Return a list of all live buffers in which `envrc-mode' is enabled."
+(defun ben--mode-buffers ()
+  "Return a list of all live buffers in which `ben-mode' is enabled."
   (seq-filter (lambda (b) (and (buffer-live-p b)
                                (with-current-buffer b
-                                 envrc-mode)))
+                                 ben-mode)))
               (buffer-list)))
 
-(defmacro envrc--with-required-current-env (varname &rest body)
+(defmacro ben--with-required-current-env (varname &rest body)
   "With VARNAME set to the current env dir path, execute BODY.
 If there is no current env dir, abort with a user error."
   (declare (indent 1))
   (cl-assert (symbolp varname))
-  `(let ((,varname (envrc--find-env-dir)))
+  `(let ((,varname (ben--find-env-dir)))
      (unless ,varname
        (user-error "No enclosing .envrc"))
      ,@body))
 
-(defun envrc--call-process-with-global-env (&rest args)
+(defun ben--call-process-with-global-env (&rest args)
   "Like `call-process', but always use the global process environment.
 In particular, we ensure the default variable `exec-path' and
 `process-environment' are used.  This ensures an .envrc doesn't take
-`envrc-direnv-executable' out of our path.
+`ben-direnv-executable' out of our path.
 ARGS is as for `call-process'."
   (let ((exec-path (default-value 'exec-path))
         (process-environment (default-value 'process-environment)))
     (apply 'process-file args)))
 
-(defun envrc--start-process-with-global-env (sentinel out-buf err-buf &rest args)
+(defun ben--start-process-with-global-env (sentinel out-buf err-buf &rest args)
   "Like `start-process', but always use the global process environment.
 In particular, we ensure the default variable `exec-path' and
 `process-environment' are used.  This ensures an .envrc doesn't take
-`envrc-direnv-executable' out of our path.
+`ben-direnv-executable' out of our path.
 
 SENTINEL, OUT-BUF, ERR-BUF and ARGS are the respective keywords of
 `make-process'."
   (let* ((env-buf (current-buffer))
          (env-dir default-directory)
-         (running-process (alist-get 'process (gethash env-dir envrc--processes)))
+         (running-process (alist-get 'process (gethash env-dir ben--processes)))
          (wrapped-sentinel (lambda (process msg)
                              (unless (buffer-live-p env-buf)
                                ;; Migrate to any buffer from the same env.
                                (setq env-buf
                                      (seq-find (lambda (buf)
                                                  (with-current-buffer buf
-                                                   (equal (envrc--find-env-dir) env-dir)))
-                                               (envrc--mode-buffers))))
+                                                   (equal (ben--find-env-dir) env-dir)))
+                                               (ben--mode-buffers))))
                              (unwind-protect
                                  ;; NOTE: the call back and the status stop
                                  ;; should run in a buffer from the same
                                  ;; environment as the async process.
                                  (with-current-buffer env-buf
                                    (funcall sentinel process msg)
-                                   (envrc-status-stop env-dir))
-                               (remhash env-dir envrc--processes)))))
+                                   (ben-status-stop env-dir))
+                               (remhash env-dir ben--processes)))))
     (if running-process
-        (envrc--debug "Ignoring, process already running for %s." env-dir)
+        (ben--debug "Ignoring, process already running for %s." env-dir)
       (let* ((exec-path (default-value 'exec-path))
              (process-environment (default-value 'process-environment))
              (process (make-process
-                       :name "*envrc-process*"
+                       :name "*ben-process*"
                        :buffer out-buf
                        :stderr err-buf
                        :sentinel wrapped-sentinel
@@ -738,123 +740,123 @@ SENTINEL, OUT-BUF, ERR-BUF and ARGS are the respective keywords of
                        :command args)))
         (puthash env-dir `((process . ,process)
                            (subscribed . (,(current-buffer))))
-                 envrc--processes)
-        (when envrc-add-to-mode-line-misc-info
-          (envrc-status-start))))))
+                 ben--processes)
+        (when ben-add-to-mode-line-misc-info
+          (ben-status-start))))))
 
-(defun envrc--kill-running-prompt (env-dir)
+(defun ben--kill-running-prompt (env-dir)
   "Prompt user to kill any process loading the environment of ENV-DIR."
-  (when-let* ((proc (alist-get 'process (gethash env-dir envrc--processes)))
-              (kill (if envrc-async-prompt-before-kill
+  (when-let* ((proc (alist-get 'process (gethash env-dir ben--processes)))
+              (kill (if ben-async-prompt-before-kill
                         (yes-or-no-p (format "Process %s is loading the environment, kill it? " proc))
                       t)))
     (kill-process proc)
-    (while (alist-get 'process (gethash env-dir envrc--processes))
+    (while (alist-get 'process (gethash env-dir ben--processes))
       (sleep-for 0.1))))
 
-(defun envrc--run-direnv (verb)
+(defun ben--run-direnv (verb)
   "Run direnv command named by VERB, then refresh current env."
-  (envrc--with-required-current-env env-dir
-    (envrc--kill-running-prompt env-dir)
-    (let* ((outbuf (get-buffer-create (format "*envrc-%s*" verb)))
+  (ben--with-required-current-env env-dir
+    (ben--kill-running-prompt env-dir)
+    (let* ((outbuf (get-buffer-create (format "*ben-%s*" verb)))
            (default-directory env-dir)
-           (exit-code (envrc--call-process-with-global-env envrc-direnv-executable nil outbuf nil verb)))
+           (exit-code (ben--call-process-with-global-env ben-direnv-executable nil outbuf nil verb)))
       (if (zerop exit-code)
           (progn
-            (envrc--update-env env-dir)
+            (ben--update-env env-dir)
             (kill-buffer outbuf))
         (display-buffer outbuf)
         (user-error "Error running direnv %s" verb)))))
 
-(defun envrc-reload ()
+(defun ben-reload ()
   "Reload the current env."
   (interactive)
-  (envrc--run-direnv "reload"))
+  (ben--run-direnv "reload"))
 
-(defun envrc--async-process-sentinel (process msg)
+(defun ben--async-process-sentinel (process msg)
   "Return PROCESS's exit code.
 
-Display MSG in debug buffer if `envrc-debug' is non-nil."
+Display MSG in debug buffer if `ben-debug' is non-nil."
   (when (memq (process-status process) '(exit signal))
     (let ((exit-code (process-exit-status process)))
-      (envrc--debug (concat (process-name process) " - " msg " - status: " (number-to-string exit-code)))
+      (ben--debug (concat (process-name process) " - " msg " - status: " (number-to-string exit-code)))
       exit-code)))
 
-(defun envrc-allow ()
+(defun ben-allow ()
   "Run \"direnv allow\" in the current env."
   (interactive)
-  (envrc--run-direnv "allow"))
+  (ben--run-direnv "allow"))
 
-(defun envrc-deny ()
+(defun ben-deny ()
   "Run \"direnv deny\" in the current env."
   (interactive)
-  (envrc--run-direnv "deny"))
+  (ben--run-direnv "deny"))
 
-(defun envrc-reload-all ()
+(defun ben-reload-all ()
   "Reload direnvs for all buffers.
 This can be useful if a .envrc has been deleted."
   (interactive)
-  (envrc--debug "Invalidating cache for all envs")
-  (clrhash envrc--cache)
-  (dolist (buf (envrc--mode-buffers))
+  (ben--debug "Invalidating cache for all envs")
+  (clrhash ben--cache)
+  (dolist (buf (ben--mode-buffers))
     (with-current-buffer buf
-      (envrc--update))))
+      (ben--update))))
 
-(defun envrc-show-log ()
-  "Open envrc log buffer."
+(defun ben-show-log ()
+  "Open ben log buffer."
   (interactive)
-  (if-let* ((buffer (get-buffer "*envrc*")))
+  (if-let* ((buffer (get-buffer "*ben*")))
       (pop-to-buffer buffer)
-    (message "Envrc log buffer does not exist")))
+    (message "Ben log buffer does not exist")))
 
 
 ;;; Propagate local environment to commands that use temp buffers
 
-(defun envrc-propagate-environment (orig &rest args)
+(defun ben-propagate-environment (orig &rest args)
   "Advice function to wrap a command ORIG and make it use our local env.
 This can be used to force compliance where ORIG starts processes
 in a temp buffer.  ARGS is as for ORIG."
-  (if envrc-mode
+  (if ben-mode
       (inheritenv (apply orig args))
     (apply orig args)))
 
-(defun envrc-propagate-tramp-environment (buf)
+(defun ben-propagate-tramp-environment (buf)
   "Advice function to propagate `tramp-remote-path' and
 `tramp-remote-process-environment' from buffer local values."
-  (when envrc-mode
-    (let ((cur-path envrc--remote-path)
+  (when ben-mode
+    (let ((cur-path ben--remote-path)
           (cur-env tramp-remote-process-environment))
       (with-current-buffer buf
         (setq-local tramp-remote-process-environment cur-env)
-        (setq-local envrc--remote-path cur-path))))
+        (setq-local ben--remote-path cur-path))))
   buf)
 
-(defun envrc-get-remote-path (fn vec)
+(defun ben-get-remote-path (fn vec)
   "Advice function to wrap FN (`tramp-get-remote-path'),
 with its argument VEC.
 Shortcuts tramp caching direnv sets the variable `exec-path'."
   (with-current-buffer (tramp-get-connection-buffer vec)
-    (or envrc--remote-path
+    (or ben--remote-path
         (apply fn vec nil))))
 
 ;; NOTE: since this function is meant to be invoked by `completing-read',
-;; `envrc-mode' must be enabled in the minibuffer. This can be configured by
-;; setting `envrc-disable-in-minibuffer' to nil.
-(advice-add 'Man-completion-table :around #'envrc-propagate-environment)
-(advice-add 'shell-command :around #'envrc-propagate-environment)
-(advice-add 'shell-command-to-string :around #'envrc-propagate-environment)
-(advice-add 'async-shell-command :around #'envrc-propagate-environment)
-(advice-add 'org-babel-eval :around #'envrc-propagate-environment)
-(advice-add 'org-export-file :around #'envrc-propagate-environment)
-(advice-add 'tramp-get-connection-buffer :filter-return #'envrc-propagate-tramp-environment)
-(advice-add 'tramp-get-remote-path :around #'envrc-get-remote-path)
+;; `ben-mode' must be enabled in the minibuffer. This can be configured by
+;; setting `ben-disable-in-minibuffer' to nil.
+(advice-add 'Man-completion-table :around #'ben-propagate-environment)
+(advice-add 'shell-command :around #'ben-propagate-environment)
+(advice-add 'shell-command-to-string :around #'ben-propagate-environment)
+(advice-add 'async-shell-command :around #'ben-propagate-environment)
+(advice-add 'org-babel-eval :around #'ben-propagate-environment)
+(advice-add 'org-export-file :around #'ben-propagate-environment)
+(advice-add 'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
+(advice-add 'tramp-get-remote-path :around #'ben-get-remote-path)
 
 
 ;;; Major mode for .envrc files
 
 ;; Generate direnv keywords with:
 ;;     $ rg "Usage:\s+([^_]\w+)" DIRENV_SRC/stdlib.sh -Nor '"$1"' | sort | uniq
-(defvar envrc-file-extra-keywords
+(defvar ben-file-extra-keywords
   '("MANPATH_add" "PATH_add" "PATH_rm" "direnv_apply_dump" "direnv_layout_dir"
     "direnv_load" "direnv_version" "dotenv" "dotenv_if_exists"
     "env_vars_required" "expand_path" "fetchurl" "find_up" "has" "join_args"
@@ -868,23 +870,23 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 (declare-function sh-set-shell "sh-script")
 
 ;;;###autoload
-(define-derived-mode envrc-file-mode
-  sh-mode "envrc"
+(define-derived-mode ben-file-mode
+  sh-mode "ben"
   "Major mode for .envrc files as used by direnv.
-\\{envrc-file-mode-map}"
+\\{ben-file-mode-map}"
   (sh-set-shell "bash")
   (font-lock-add-keywords
-   nil `((,(regexp-opt envrc-file-extra-keywords 'symbols)
+   nil `((,(regexp-opt ben-file-extra-keywords 'symbols)
           (0 font-lock-keyword-face)))))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.envrc\\'" . envrc-file-mode))
+(add-to-list 'auto-mode-alist '("\\.envrc\\'" . ben-file-mode))
 
 
-(provide 'envrc)
-;;; envrc.el ends here
+(provide 'ben)
+;;; ben.el ends here
 
-;; LocalWords:  envrc direnv
+;; LocalWords:  ben direnv
 
 ;; Local Variables:
 ;; coding: utf-8

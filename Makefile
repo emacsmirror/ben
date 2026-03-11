@@ -17,12 +17,12 @@ INIT_PACKAGES := "(progn \
 all: compile test package-lint clean
 
 test: test-sync test-async
-test-sync: SYNC_MODE = --eval "(setq envrc-async-processing nil)"
+test-sync: SYNC_MODE = --eval "(setq ben-async-processing nil)"
 test-%:
-	${EMACS} -Q --eval $(subst PACKAGES,${DEPS},${INIT_PACKAGES}) ${SYNC_MODE} -batch -l envrc.el -l envrc-tests.el -f ert-run-tests-batch-and-exit
+	${EMACS} -Q --eval $(subst PACKAGES,${DEPS},${INIT_PACKAGES}) ${SYNC_MODE} -batch -l ben.el -l ben-tests.el -f ert-run-tests-batch-and-exit
 
 package-lint:
-	${EMACS} -Q --eval $(subst PACKAGES,package-lint,${INIT_PACKAGES}) -batch -f package-lint-batch-and-exit envrc.el
+	${EMACS} -Q --eval $(subst PACKAGES,package-lint,${INIT_PACKAGES}) -batch -f package-lint-batch-and-exit ben.el
 
 compile: clean
 	${EMACS} -Q --eval $(subst PACKAGES,${DEPS},${INIT_PACKAGES}) -L . -batch -f batch-byte-compile *.el
