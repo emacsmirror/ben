@@ -14,7 +14,7 @@ INIT_PACKAGES := "(progn \
       (package-install pkg))) \
   )"
 
-all: compile test package-lint clean-elc
+all: compile test package-lint clean
 
 test: test-sync test-async
 test-sync: SYNC_MODE = --eval "(setq envrc-async-processing nil)"
@@ -24,10 +24,10 @@ test-%:
 package-lint:
 	${EMACS} -Q --eval $(subst PACKAGES,package-lint,${INIT_PACKAGES}) -batch -f package-lint-batch-and-exit envrc.el
 
-compile: clean-elc
+compile: clean
 	${EMACS} -Q --eval $(subst PACKAGES,${DEPS},${INIT_PACKAGES}) -L . -batch -f batch-byte-compile *.el
 
-clean-elc:
-	rm -f f.elc
+clean:
+	rm -f *.elc
 
-.PHONY:	all compile clean-elc package-lint
+.PHONY:	all compile clean package-lint
