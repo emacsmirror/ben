@@ -41,9 +41,11 @@
   (should (apply 'call-process envrc-direnv-executable nil nil nil args)))
 
 (defmacro envrc-tests--with-extra-global-env-var (key val &rest body)
-  "Temporarily set var KEY to VAL in the global `process-environment', while BODY is evaluated."
+  "Temporarily set var KEY to VAL in the global `process-environment'.
+
+The lexical environment applies only while BODY is evaluated."
   (declare (indent 2))
-  (let ((old-env (cl-gensym)))
+  (let ((old-env (gensym)))
     `(let ((,old-env (default-value 'process-environment)))
        (push (format "%s=%s" ,key ,val) (default-value 'process-environment))
        (unwind-protect
@@ -54,7 +56,7 @@
 (defmacro envrc-tests--with-temp-directory (var &rest body)
   "Create a temporary directory, bind it to VAR, make it current, and execute BODY."
   (declare (indent 1))
-  (let ((passed (cl-gensym)))
+  (let ((passed (gensym)))
     `(let* ((default-directory (make-temp-file "envrc" t))
             (envrc-debug t)
             ,passed
@@ -276,7 +278,7 @@
       (when envrc-async-processing
         (sleep-for 0.1))
       (should (equal "BAR" (getenv "FOO")))
-      (envrc-tests--with-extra-global-env-var (symbol-name (cl-gensym)) "blah"
+      (envrc-tests--with-extra-global-env-var (symbol-name (gensym)) "blah"
         (with-temp-file ".envrc"
           (insert "export FOO=BAZ"))
         (envrc-tests--exec "allow")
@@ -306,6 +308,7 @@
 ;;     (with-temp-buffer
 ;;       (envrc-mode 1)
 ;;       (should (equal "BAR" (getenv "FOO"))))))
+(require 'em-dirs)
 (require 'eshell)
 
 (ert-deftest envrc-eshell-updates-environment-when-changing-directory ()

@@ -55,19 +55,24 @@
 ;; NOTE: the default face sets a foreground. Better to use one without so we can
 ;; propertize.
 (defface envrc-list-even-face `((t :extend t))
-  "Face used by `envrc-list-processes' for odd rows.")
+  "Face used by `envrc-list-processes' for odd rows."
+  :group 'envrc)
 
 (defface envrc-list-odd-face '((t :background "gray92" :extend t))
-  "Face used by `envrc-list-processes' for odd rows.")
+  "Face used by `envrc-list-processes' for odd rows."
+  :group 'envrc)
 
 (defface envrc-list-pid-face '((t :inherit bold))
-  "Face used by `envrc-list-processes' for odd rows.")
+  "Face used by `envrc-list-processes' for odd rows."
+  :group 'envrc)
 
 (defface envrc-list-path-face '((t :inherit link))
-  "Face used by `envrc-list-processes' for odd rows.")
+  "Face used by `envrc-list-processes' for odd rows."
+  :group 'envrc)
 
 (defface envrc-list-subscribed-face '((t :foreground "OliveDrab"))
-  "Face used by `envrc-list-processes' for odd rows.")
+  "Face used by `envrc-list-processes' for odd rows."
+  :group 'envrc)
 
 (defcustom envrc-list-auto-update-flag t
   "Non-nil means auto update envrc buffers."
@@ -113,8 +118,8 @@ If there are no `envrc' buffers, cancel the timer."
           (print proced-refinements)
           (proced-update))))
      ((eql col 1) (dired (thing-at-point 'filename t)))
-     ((eql col 2) (when-let ((name (thing-at-point 'symbol t))
-                             (buf (get-buffer name)))
+     ((eql col 2) (when-let* ((name (thing-at-point 'symbol t))
+                              (buf (get-buffer name)))
                     (pop-to-buffer buf))))))
 
 (defun envrc-list-kill-process ()
@@ -135,7 +140,7 @@ If there are no `envrc' buffers, cancel the timer."
   (interactive)
   ;; HACK: running this while on minibuffer resets `window-point'.
   (unless (minibufferp)
-    (when-let ((buf (get-buffer "*envrc-processes*")))
+    (when-let* ((buf (get-buffer "*envrc-processes*")))
       (with-current-buffer buf
         (let* ((windows (get-buffer-window-list buf))
                (win-and-pts (mapcar (lambda (win)
