@@ -185,8 +185,8 @@ e.g. (define-key ben-mode-map (kbd \"C-c e\") \\='ben-command-map)"
       (progn
         (when ben-add-to-mode-line-misc-info
           (setq ben--used-mode-line-construct ben-indicator)
-           ;; NOTE since this is a minor mode, `mode-line-misc-info' needs to be
-           ;; controlled locally.
+          ;; NOTE since this is a minor mode, `mode-line-misc-info' needs to be
+          ;; controlled locally.
           (make-local-variable 'mode-line-misc-info)
           (add-to-list 'mode-line-misc-info ben-indicator))
         (ben--update)
@@ -314,7 +314,6 @@ ENV-DIR is the directory where to update the status."
   (when ben--status-timer
     (cancel-timer ben--status-timer)
     (setq ben--status-timer nil))
-
   (let ((status ben--status))
     (dolist (buf (ben--mode-buffers))
       (with-current-buffer buf
@@ -328,7 +327,6 @@ ENV-DIR is the directory where to update the status."
                          (t status))))
           (setq ben--status status*)
           (force-mode-line-update))))))
-
 
 (defun ben--env-dir-p (dir)
   "Return non-nil if DIR contains a config file for direnv."
@@ -365,8 +363,8 @@ called `cd'"
         (deny-path (concat (or (getenv "XDG_DATA_HOME")
                                (concat (getenv "HOME") "/.local/share"))
                            "/direnv/deny")))
-      (locate-file deny-hash
-                   (list deny-path))))
+    (locate-file deny-hash
+                 (list deny-path))))
 
 (defun ben--cache-key (env-dir process-env)
   "Get a hash key for the result of invoking direnv in ENV-DIR with PROCESS-ENV.
@@ -498,10 +496,10 @@ CALLBACK the function which will get the return value."
             (let (result)
               (with-current-buffer stdout
                 (ben--debug "Direnv exited with %s and stderr=%S, stdout=%S"
-                              exit-code
-                              (with-current-buffer stderr
-                                (buffer-string))
+                            exit-code
+                            (with-current-buffer stderr
                               (buffer-string))
+                            (buffer-string))
                 (cond ((eq 0 exit-code) ;; zerop is not an option, as exit-code may sometimes be a symbol
                        (progn
                          (if (zerop (buffer-size))
@@ -563,11 +561,11 @@ variable names and values."
                                 (message "interrupted!!")
                                 'interrupted))))
               (ben--debug "Direnv exited with %s and stderr=%S, stdout=%S"
-                            exit-code
-                            (with-temp-buffer
-                              (insert-file-contents stderr-file)
-                              (buffer-string))
+                          exit-code
+                          (with-temp-buffer
+                            (insert-file-contents stderr-file)
                             (buffer-string))
+                          (buffer-string))
               (cond ((eq 0 exit-code) ;; zerop is not an option, as exit-code may sometimes be a symbol
                      (progn
                        (if (zerop (buffer-size))
