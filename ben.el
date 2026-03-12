@@ -278,37 +278,31 @@ local variables.")
 
 (defun ben--status-update-buf (buf)
   "Update the spinner in BUF's mode line."
-  (let ((spinner (nth ben--status-index ben-status-frames)))
+  (let ((loading-environments (hash-table-keys ben--processes)))
     (with-current-buffer buf
-      (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
-            ben--status 'loading)
-      (force-mode-line-update))))
+      (when (member (ben--find-env-dir) loading-environments)
+        (let ((spinner (nth ben--status-index ben-status-frames)))
+          (with-current-buffer buf
+            (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
+                  ben--status 'loading)
+            (force-mode-line-update)))))))
 
 (defun ben-status-update ()
-  "Update the spinner in the mode line.
-ENV-DIR is the directory where to update the status"
-  (let (keys)
-    (maphash (lambda (key _value)
-               (push key keys))
-             ben--processes)
-    (walk-windows (lambda (win)
-                    (let ((win-buf (window-buffer win)))
-                      (unless (minibufferp win-buf)
-                        (with-current-buffer win-buf
-                          (when (member (ben--find-env-dir) keys)
-                            (ben--status-update-buf win-buf)))))))))
+  "Update the spinner in the mode line."
+  (setq ben--status-index
+        (mod (1+ ben--status-index)
+             (length ben-status-frames)))
+  (walk-windows (lambda (win)
+                  (let ((buf (window-buffer win)))
+                    (unless (minibufferp buf)
+                      (ben--status-update-buf buf))))))
 
 (defun ben-status-start ()
-  "Start the spinner and update it periodically.
-ENV-DIR is the directory where to update the status."
+  "Start the spinner and update it periodically."
   (unless ben--status-timer
     (setq ben--status-index 0)
     (setq ben--status-timer
-          (run-with-timer 0 0.1 (lambda ()
-                                  (setq ben--status-index
-                                        (mod (1+ ben--status-index)
-                                             (length ben-status-frames)))
-                                  (ben-status-update))))))
+          (run-with-timer 0 0.1 #'ben-status-update))))
 
 (defun ben-status-stop (env-dir)
   "Stop the spinner and remove it from the mode line.
