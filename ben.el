@@ -278,14 +278,18 @@ local variables.")
 
 (defun ben--status-update-buf (buf)
   "Update the spinner in BUF's mode line."
-  (let ((loading-environments (hash-table-keys ben--processes)))
-    (with-current-buffer buf
-      (when (member (ben--find-env-dir) loading-environments)
+  (with-current-buffer buf
+    (let ((loading-environments (hash-table-keys ben--processes))
+          (buf-env-dir (ben--find-env-dir)))
+      (cond
+       ((member buf-env-dir loading-environments)
         (let ((spinner (nth ben--status-index ben-status-frames)))
-          (with-current-buffer buf
-            (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
-                  ben--status 'loading)
-            (force-mode-line-update)))))))
+          (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
+                ben--status 'loading)))
+       ((and (not buf-env-dir)
+             (equal ben--status 'loading))
+        (setq ben--status 'none))))
+    (force-mode-line-update)))
 
 (defun ben-status-update ()
   "Update the spinner in the mode line."
@@ -314,8 +318,15 @@ ENV-DIR is the directory where to update the status."
   (let ((status ben--status))
     (dolist (buf (ben--mode-buffers))
       (with-current-buffer buf
-        (when (equal (ben--find-env-dir) env-dir)
-          (setq ben--status status)
+        (let* ((buf-env-dir (ben--find-env-dir))
+               (status* (cond
+                         ((equal buf-env-dir env-dir)
+                          status)
+                         ((and (not buf-env-dir)
+                               (equal ben--status 'loading))
+                          'none)
+                         (t status))))
+          (setq ben--status status*)
           (force-mode-line-update))))))
 
 
