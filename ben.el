@@ -160,8 +160,10 @@ See `ben-mode-map' for how to assign a prefix binding to these."
 
 (defcustom ben-mode-map (make-sparse-keymap)
   "Keymap for `ben-mode'.
-To access `ben-command-map' from this map, give it a prefix keybinding,
-e.g. (define-key ben-mode-map (kbd \"C-c e\") \\='ben-command-map)"
+To access this map, give it a prefix keybinding.
+
+Example:
+  (define-key ben-mode-map (kbd \"C-c e\") \\='ben-command-map)"
   :type '(restricted-sexp :match-alternatives (keymapp)))
 
 (defcustom ben-remote nil
@@ -265,7 +267,7 @@ local variables.")
   "Current frame to display during the loading indicator state.")
 
 (defun ben--status ()
-  "Return a colourised version of `ben--status' for use in the mode line."
+  "Get the propertized status to display in the mode line."
   (pcase ben--status
     (`none ben-none-indicator)
     (`loading ben--loading-indicator)
@@ -817,6 +819,7 @@ This can be useful if a .envrc has been deleted."
 
 (defun ben-propagate-environment (orig &rest args)
   "Advice function to wrap a command ORIG and make it use our local env.
+
 This can be used to force compliance where ORIG starts processes
 in a temp buffer.  ARGS is as for ORIG."
   (if ben-mode
@@ -824,8 +827,11 @@ in a temp buffer.  ARGS is as for ORIG."
     (apply orig args)))
 
 (defun ben-propagate-tramp-environment (buf)
-  "Advice function to propagate `tramp-remote-path' and
-`tramp-remote-process-environment' from buffer local values."
+  "Advice function to propagate environments to tramp.
+
+This will affect `tramp-remote-path' and
+`tramp-remote-process-environment' from buffer local values.
+BUF is the buffer where to adjust the tramp variables."
   (when ben-mode
     (let ((cur-path ben--remote-path)
           (cur-env tramp-remote-process-environment))
@@ -835,8 +841,8 @@ in a temp buffer.  ARGS is as for ORIG."
   buf)
 
 (defun ben-get-remote-path (fn vec)
-  "Advice function to wrap FN (`tramp-get-remote-path'),
-with its argument VEC.
+  "Advice wrap for FN `tramp-get-remote-path' with its argument VEC.
+
 Shortcuts tramp caching direnv sets the variable `exec-path'."
   (with-current-buffer (tramp-get-connection-buffer vec)
     (or ben--remote-path

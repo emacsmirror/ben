@@ -36,6 +36,7 @@
 
 
 (defun ben-tests--exec (&rest args)
+  "Helper function to run `ben-direnv-executable' with ARGS."
   (when ben-async-processing
     (sleep-for 0.1))
   (should (apply 'call-process ben-direnv-executable nil nil nil args)))
