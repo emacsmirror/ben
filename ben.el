@@ -836,6 +836,14 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
     (or ben--remote-path
         (apply fn vec nil))))
 
+(declare-function Man-completion-table "man")
+(declare-function shell-command "simple")
+(declare-function shell-command-to-string "simple")
+(declare-function async-shell-command "simple")
+(declare-function org-babel-eval "ob-eval")
+(declare-function tramp-get-connection-buffer "tramp")
+(declare-function tramp-get-remote-path "tramp-sh")
+
 ;; NOTE: since this function is meant to be invoked by `completing-read',
 ;; `ben-mode' must be enabled in the minibuffer. This can be configured by
 ;; setting `ben-disable-in-minibuffer' to nil.
@@ -844,7 +852,6 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 (advice-add #'shell-command-to-string :around #'ben-propagate-environment)
 (advice-add #'async-shell-command :around #'ben-propagate-environment)
 (advice-add #'org-babel-eval :around #'ben-propagate-environment)
-(advice-add #'org-export-file :around #'ben-propagate-environment)
 (advice-add #'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
 (advice-add #'tramp-get-remote-path :around #'ben-get-remote-path)
 
@@ -886,7 +893,6 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
   (advice-remove #'shell-command-to-string #'ben-propagate-environment)
   (advice-remove #'async-shell-command #'ben-propagate-environment)
   (advice-remove #'org-babel-eval #'ben-propagate-environment)
-  (advice-remove #'org-export-file #'ben-propagate-environment)
   (advice-remove #'tramp-get-connection-buffer #'ben-propagate-tramp-environment)
   (advice-remove #'tramp-get-remote-path #'ben-get-remote-path)
   (ben-global-mode -1)
