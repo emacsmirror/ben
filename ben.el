@@ -482,7 +482,6 @@ CALLBACK the function which will get the return value."
           (lambda (exit-code)
             (unless (ben--env-dir-p env-dir)
               (error "%s is not a directory with a .envrc" env-dir))
-            (message "Running direnv in %s ..." env-dir)
             (let (result)
               (with-current-buffer stdout
                 (ben--debug "Direnv exited with %s and stderr=%S, stdout=%S"
@@ -531,6 +530,7 @@ CALLBACK the function which will get the return value."
                      (funcall callback
                               (funcall export-callback
                                        (ben--async-process-sentinel process msg))))))
+    (message "Running direnv in %s ..." env-dir)
     (ben--start-process-with-global-env sentinel stdout stderr ben-direnv-executable "export" "json")))
 
 (defun ben--export (env-dir)
