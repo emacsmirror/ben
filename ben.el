@@ -146,26 +146,6 @@ You can set this to nil to disable the lighter."
   "Construct spec used by the default `ben-indicator' when ben has errored."
   :type 'sexp)
 
-(defcustom ben-command-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "a") 'ben-allow)
-    (define-key map (kbd "d") 'ben-deny)
-    (define-key map (kbd "r") 'ben-reload)
-    (define-key map (kbd "l") 'ben-show-log)
-    map)
-  "Keymap for commands in `ben-mode'.
-See `ben-mode-map' for how to assign a prefix binding to these."
-  :type '(restricted-sexp :match-alternatives (keymapp)))
-(fset #'ben-command-map ben-command-map)
-
-(defcustom ben-mode-map (make-sparse-keymap)
-  "Keymap for `ben-mode'.
-To access this map, give it a prefix keybinding.
-
-Example:
-  (define-key ben-mode-map (kbd \"C-c e\") \\='ben-command-map)"
-  :type '(restricted-sexp :match-alternatives (keymapp)))
-
 (defcustom ben-remote nil
   "Whether or not to enable direnv over TRAMP."
   :type 'boolean)
@@ -177,12 +157,20 @@ Example:
 (defvar ben--used-mode-line-construct nil
   "Mode line construct last added by `notmuch-indicator-mode'.")
 
+(defvar-keymap ben-command-map
+  :doc "Keymap for `ben-mode'."
+  :prefix 'ben-command-map
+  "a" #'ben-allow
+  "d" #'ben-deny
+  "r" #'ben-reload
+  "R" #'ben-reload-all
+  "l" #'ben-show-log)
+
 ;;;###autoload
 (define-minor-mode ben-mode
   "A local minor mode in which env vars are set by direnv."
   :init-value nil
   :lighter 'ben
-  :keymap ben-mode-map
   (if ben-mode
       (progn
         (when ben-add-to-mode-line-misc-info

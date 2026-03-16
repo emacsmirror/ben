@@ -78,9 +78,7 @@ Add a snippet like the following to *your init.el*:
 (use-package ben
   :vc (:url "https://codeberg.org/pastor/ben")
   :bind
-  (:map
-   ben-mode-map
-   ("C-c E" . ben-command-map))
+  ("C-c E" . ben-command-map)
   :config
   ;; There is a bug in doom-modeline where some squares appear if the icon is
   ;; propertized.
