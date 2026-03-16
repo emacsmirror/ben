@@ -1,8 +1,6 @@
 ;;; ben-list.el --- Manage ben sessions -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022  Free Software Foundation, Inc.
-
-;; This file is part of GNU Emacs.
+;; Copyright (c) 2026 Sergio Pastor Pérez <sergio.pastorperez@gmail.com>
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -15,7 +13,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -180,7 +178,7 @@ via `ben-list-auto-update-interval'."
            (not ben-list-auto-update-timer))
       (setq ben-list-auto-update-timer
             (run-with-idle-timer ben-list-auto-update-interval t
-                                 'ben-list-auto-update))))
+                                 #'ben-list-auto-update))))
 
 ;;;###autoload
 (defun ben-list-processes ()

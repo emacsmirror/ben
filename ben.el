@@ -7,7 +7,7 @@
 ;;         Sergio Pastor Pérez <sergio.pastorperez@gmail.com>
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
-;; Package-Requires: ((emacs "27.1") (inheritenv "0.1") (seq "2.24"))
+;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
 ;; Package-Version: 0.12.3
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -156,7 +156,7 @@ You can set this to nil to disable the lighter."
   "Keymap for commands in `ben-mode'.
 See `ben-mode-map' for how to assign a prefix binding to these."
   :type '(restricted-sexp :match-alternatives (keymapp)))
-(fset 'ben-command-map ben-command-map)
+(fset #'ben-command-map ben-command-map)
 
 (defcustom ben-mode-map (make-sparse-keymap)
   "Keymap for `ben-mode'.
@@ -452,7 +452,7 @@ To avoid confusion, `ben-mode' is explicitly disabled in the buffer."
 MSG and ARGS are as for that function."
   (when ben-debug
     (ben--at-end-of-special-buffer "*ben-debug*"
-      (insert (apply 'format msg args))
+      (insert (apply #'format msg args))
       (newline))))
 
 (defun ben--summarise-changes (items)
@@ -522,7 +522,7 @@ CALLBACK the function which will get the return value."
                        (message "Direnv failed in %s" env-dir)
                        (setq result 'error)))
                 (ben--at-end-of-special-buffer "*ben*"
-                  (insert "──── " (format-time-string "%Y-%m-%d %H:%M:%S") " ──── " env-dir " ────\n\n")
+                  (insert "──── " (format-time-string "%F %T") " ──── " env-dir " ────\n\n")
                   (let ((initial-pos (point))
                         ansi-color-context)
                     (insert (with-current-buffer stderr
@@ -588,7 +588,7 @@ variable names and values."
                      (message "Direnv failed in %s" env-dir)
                      (setq result 'error)))
               (ben--at-end-of-special-buffer "*ben*"
-                (insert "──── " (format-time-string "%Y-%m-%d %H:%M:%S") " ──── " env-dir " ────\n\n")
+                (insert "──── " (format-time-string "%F %T") " ──── " env-dir " ────\n\n")
                 (let ((initial-pos (point)))
                   (insert-file-contents stderr-file)
                   (goto-char (point-max))
@@ -703,7 +703,7 @@ In particular, we ensure the default variable `exec-path' and
 ARGS is as for `call-process'."
   (let ((exec-path (default-value 'exec-path))
         (process-environment (default-value 'process-environment)))
-    (apply 'process-file args)))
+    (apply #'process-file args)))
 
 (defun ben--start-process-with-global-env (sentinel out-buf err-buf &rest args)
   "Like `start-process', but always use the global process environment.
@@ -851,14 +851,14 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 ;; NOTE: since this function is meant to be invoked by `completing-read',
 ;; `ben-mode' must be enabled in the minibuffer. This can be configured by
 ;; setting `ben-disable-in-minibuffer' to nil.
-(advice-add 'Man-completion-table :around #'ben-propagate-environment)
-(advice-add 'shell-command :around #'ben-propagate-environment)
-(advice-add 'shell-command-to-string :around #'ben-propagate-environment)
-(advice-add 'async-shell-command :around #'ben-propagate-environment)
-(advice-add 'org-babel-eval :around #'ben-propagate-environment)
-(advice-add 'org-export-file :around #'ben-propagate-environment)
-(advice-add 'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
-(advice-add 'tramp-get-remote-path :around #'ben-get-remote-path)
+(advice-add #'Man-completion-table :around #'ben-propagate-environment)
+(advice-add #'shell-command :around #'ben-propagate-environment)
+(advice-add #'shell-command-to-string :around #'ben-propagate-environment)
+(advice-add #'async-shell-command :around #'ben-propagate-environment)
+(advice-add #'org-babel-eval :around #'ben-propagate-environment)
+(advice-add #'org-export-file :around #'ben-propagate-environment)
+(advice-add #'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
+(advice-add #'tramp-get-remote-path :around #'ben-get-remote-path)
 
 
 ;;; Major mode for .envrc files
