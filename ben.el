@@ -879,6 +879,19 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.envrc\\'" . ben-file-mode))
 
+(defun ben-unload-function ()
+  "Unload `ben'."
+  (advice-remove #'Man-completion-table #'ben-propagate-environment)
+  (advice-remove #'shell-command #'ben-propagate-environment)
+  (advice-remove #'shell-command-to-string #'ben-propagate-environment)
+  (advice-remove #'async-shell-command #'ben-propagate-environment)
+  (advice-remove #'org-babel-eval #'ben-propagate-environment)
+  (advice-remove #'org-export-file #'ben-propagate-environment)
+  (advice-remove #'tramp-get-connection-buffer #'ben-propagate-tramp-environment)
+  (advice-remove #'tramp-get-remote-path #'ben-get-remote-path)
+  (ben-global-mode -1)
+  ;; Return nil to instruct Emacs to proceed with the normal unloading of `ben'.
+  nil)
 
 (provide 'ben)
 ;;; ben.el ends here
