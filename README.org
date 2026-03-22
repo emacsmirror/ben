@@ -7,6 +7,11 @@
 Whether to load the environments synchronously or asynchronously can be
 configured with the variable ~ben-async-processing~.
 
+This is main feature of 'ben'. It prevents Emacs from freezing while loading
+computationally heavy environments. This is specially the case for loading
+'.envrc' files which rely on Guix, some computations can take hours to
+complete. This package aims to facilitate loading such environments.
+
 ** Enhanced status lighter for async status
 This also refactors the =envrc= lighter to replace it with a mode line
 indicator. This indicator introduces two new states:
