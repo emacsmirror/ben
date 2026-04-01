@@ -873,6 +873,9 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 (advice-add #'org-babel-eval :around #'ben-propagate-environment)
 (advice-add #'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
 (advice-add #'tramp-get-remote-path :around #'ben-get-remote-path)
+;; Make sure VC finds the correct program for calling backend.
+(advice-add #'vc-call-backend :around #'ben-propagate-environment)
+(advice-add #'vc-dir :around #'ben-propagate-environment)
 
 
 ;;; Major mode for .envrc files
