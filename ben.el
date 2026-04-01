@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.5
+;; Package-Version: 0.12.6
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
