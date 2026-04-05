@@ -1,4 +1,4 @@
-;;; ben.el --- Asynchronous buffer-local environment integration with `direnv'  -*- lexical-binding: t; -*-
+;;; ben.el --- Asynchronous buffer-local environments via `direnv'  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020  Steve Purcell
 ;; Copyright (c) 2026 Sergio Pastor Pérez <sergio.pastorperez@gmail.com>
