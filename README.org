@@ -81,7 +81,6 @@ RET=.
 Add a snippet like the following to *your init.el*:
 #+begin_src emacs-lisp
 (use-package ben
-  :vc (:url "https://codeberg.org/pastor/ben")
   :bind
   ("C-c E" . ben-command-map)
   :config
