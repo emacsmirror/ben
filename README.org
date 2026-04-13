@@ -1,16 +1,36 @@
 #+title: ben.el (Buffer ENvironments) - Asynchronous buffer-local Direnv integration for Emacs
 
-*BEn* stands for *Buffer ENvironments*, it's an asynchronous fork of [[https://github.com/purcell/envrc][envrc]].
+fork is purely additive, this means that it has all the features from upstream
+*BEn* stands for *Buffer ENvironments*, it's an asynchronous fork of [[https://github.com/purcell/envrc][envrc]]. This
+plus some extras.
 
 * Fork additions
+The sections below list the additions Ben has added on top of envrc.
+
+*For more information on why these features were not added to [[https://github.com/purcell/envrc][envrc]] directly,*
+*see the links referenced in each of the following sections.*
+
 ** Async support
 Whether to load the environments synchronously or asynchronously can be
 configured with the variable ~ben-async-processing~.
 
-This is main feature of 'ben'. It prevents Emacs from freezing while loading
-computationally heavy environments. This is specially the case for loading
-'.envrc' files which rely on Guix, some computations can take hours to
-complete. This package aims to facilitate loading such environments.
+The main improvement of =ben= over =envrc= is the asynchronous processing of
+environments, which prevents Emacs from freezing. This is especially useful
+while loading computationally heavy environments, such when loading '.envrc'
+files that rely on Guix. In these cases, computations can take hours to
+complete. This package aims to facilitate loading such environments in the
+background.
+
+The following upstream PR give some overview on why this feature has not been
+merged upstream:
+- [[https://github.com/purcell/envrc/pull/93][envrc - Support async execution]]
+
+Since the discussion touches a few topics, here is the quote of the maintainer
+that explains why this is not merged:
+#+begin_quote
+<purcell>: There are a number of trade-offs around adding this support, and I'm
+not yet convinced I want to take on async support.
+#+end_quote
 
 ** Enhanced status lighter for async status
 This also refactors the =envrc= lighter to replace it with a mode line
@@ -20,6 +40,10 @@ indicator. This indicator introduces two new states:
   ~ben-add-to-mode-line-misc-info~ variable to ~nil~.
 - And the denied state, to indicate that an environment has been blocked by
   issuing ~direnv deny~.
+
+Read the following upstream PR to get some context on why this has not been
+merged:
+- [[https://github.com/purcell/envrc/pull/95][envrc - Refactor status lighter]]
 
 ** Process manager
 In order to ease the management of asynchronous processes, a vtable based
@@ -35,6 +59,10 @@ defined in ~ben-list-mode-map~. For now it allows:
 
 The module also provides ~ben-list-auto-update-flag~ which periodically
 refreshes the =ben= process UI every ~ben-list-auto-update-interval~.
+
+The following upstream PR gives additional context on why this feature has not
+been merged upstream:
+- [[https://github.com/purcell/envrc/pull/96][envrc - Add processes UI]]
 
 ** Minibuffer support
 This fork of [[https://github.com/purcell/envrc][envrc]] introduces a new configuration variable,

@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.7
+;; Package-Version: 0.12.8
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,11 +33,12 @@
 ;; The project relies on [direnv](https://direnv.net) which allows to setup
 ;; per-directory environments through '.envrc' files.
 ;;
-;; The main feature of 'ben' is the asynchronous processing of
-;; environments. Which prevents Emacs from freezing while loading
-;; computationally heavy environments. This is specially the case for loading
-;; '.envrc' files which rely on Guix, some computations can take hours to
-;; complete. This package aims to facilitate loading such environments.
+;; The main improvement of 'ben' over 'envrc' is the asynchronous processing of
+;; environments, which prevents Emacs from freezing. This is especially useful
+;; while loading computationally heavy environments, such when loading '.envrc'
+;; files that rely on Guix. In these cases, computations can take hours to
+;; complete. This package aims to facilitate loading such environments in the
+;; background.
 ;;
 ;; The main additions of the fork are:
 ;;
@@ -62,6 +63,8 @@
 ;;
 ;;    (with-eval-after-load 'ben
 ;;      (define-key ben-mode-map (kbd "C-c e") 'ben-command-map))
+;;
+;; For more information about 'ben', please see the README.org file.
 
 ;;; Code:
 
