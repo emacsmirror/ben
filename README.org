@@ -111,11 +111,13 @@ Add a snippet like the following to *your init.el*:
 (use-package ben
   :bind
   ("C-c E" . ben-command-map)
-  :config
-  ;; There is a bug in doom-modeline where some squares appear if the icon is
-  ;; propertized.
-  (setq ben-indicator `(,(substring-no-properties (nerd-icons-faicon "nf-fa-cubes"))
-                        "[" (:eval (ben--status)) "]"))
+  ;; NOTE: Optionally un-comment the following config section to customize the
+  ;; mode-line status indicator with nerd-icons.
+  ;; :config
+  ;; ;; There is a bug in doom-modeline where some squares appear if the icon is
+  ;; ;; propertized.
+  ;; (setq ben-indicator `(,(substring-no-properties (nerd-icons-faicon "nf-fa-cubes"))
+  ;;                       "[" (:eval (ben--status)) "]"))
   :init
   (add-hook 'elpaca-after-init-hook #'ben-global-mode 99))
 #+end_src
