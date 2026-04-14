@@ -110,7 +110,8 @@ Add a snippet like the following to *your init.el*:
 #+begin_src emacs-lisp
 (use-package ben
   :bind
-  ("C-c E" . ben-command-map)
+  (:map ben-mode-map
+        ("C-c e" . ben-command-map))
   ;; NOTE: Optionally un-comment the following config section to customize the
   ;; mode-line status indicator with nerd-icons.
   ;; :config

@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.8
+;; Package-Version: 0.12.9
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -180,13 +180,16 @@ You can set this to nil to disable the lighter."
   "Mode line construct last added by `notmuch-indicator-mode'.")
 
 (defvar-keymap ben-command-map
-  :doc "Keymap for `ben-mode'."
-  :prefix 'ben-command-map
+  :doc "Prefix keymap for `ben-mode'."
+  :prefix t
   "a" #'ben-allow
   "d" #'ben-deny
   "r" #'ben-reload
   "R" #'ben-reload-all
   "l" #'ben-show-log)
+
+(defvar-keymap ben-mode-map
+  :doc "Keymap for `ben-mode'.")
 
 ;;;###autoload
 (define-minor-mode ben-mode
