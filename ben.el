@@ -27,17 +27,17 @@
 
 ;; Asynchronous fork of [envrc](https://github.com/purcell/envrc).
 ;;
-;; This package allows you to load environments buffer locally. The package is
+;; This package allows you to load environments buffer locally.  The package is
 ;; named 'ben', which stands for Buffer ENvironments.
 ;;
 ;; The project relies on [direnv](https://direnv.net) which allows to setup
 ;; per-directory environments through '.envrc' files.
 ;;
 ;; The main improvement of 'ben' over 'envrc' is the asynchronous processing of
-;; environments, which prevents Emacs from freezing. This is especially useful
+;; environments, which prevents Emacs from freezing.  This is especially useful
 ;; while loading computationally heavy environments, such when loading '.envrc'
-;; files that rely on Guix. In these cases, computations can take hours to
-;; complete. This package aims to facilitate loading such environments in the
+;; files that rely on Guix.  In these cases, computations can take hours to
+;; complete.  This package aims to facilitate loading such environments in the
 ;; background.
 ;;
 ;; The main additions of the fork are:
@@ -177,7 +177,7 @@ You can set this to nil to disable the lighter."
   :type '(repeat string))
 
 (defvar ben--used-mode-line-construct nil
-  "Mode line construct last added by `notmuch-indicator-mode'.")
+  "Mode line construct to add to `mode-line-misc-info' when `ben-mode' is on.")
 
 (defvar-keymap ben-command-map
   :doc "Prefix keymap for `ben-mode'."
