@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.9
+;; Package-Version: 0.12.10
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -181,7 +181,7 @@ You can set this to nil to disable the lighter."
 
 (defvar-keymap ben-command-map
   :doc "Prefix keymap for `ben-mode'."
-  :prefix t
+  :prefix 'ben-command-map
   "a" #'ben-allow
   "d" #'ben-deny
   "r" #'ben-reload
