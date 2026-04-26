@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.11
+;; Package-Version: 0.12.12
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -152,19 +152,39 @@ You can set this to nil to disable the lighter."
   :type 'sexp)
 (put 'ben-indicator 'risky-local-variable t)
 
-(defcustom ben-none-indicator '((:propertize "none" face ben-mode-line-none-face))
+(defun ben-popup-menu (_)
+  (interactive "e")
+  (popup-menu ben-command-map))
+
+(defun ben--indicator-keymap ()
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mode-line mouse-1] #'ben-popup-menu)
+    map))
+
+(defun ben--make-indicator (label face)
+  `((:propertize
+     ,label
+     local-map ,(ben--indicator-keymap)
+     mouse-face mode-line-highlight
+     face ,face)))
+
+(defcustom ben-none-indicator
+  (ben--make-indicator "none" 'ben-mode-line-none-face)
   "Construct spec used by the default `ben-indicator' when ben is inactive."
   :type 'sexp)
 
-(defcustom ben-on-indicator '((:propertize "on" face ben-mode-line-on-face))
+(defcustom ben-on-indicator
+  (ben--make-indicator "on" 'ben-mode-line-on-face)
   "Construct spec used by the default `ben-indicator' when ben is on."
   :type 'sexp)
 
-(defcustom ben-denied-indicator '((:propertize "denied" face ben-mode-line-denied-face))
+(defcustom ben-denied-indicator
+  (ben--make-indicator "denied" 'ben-mode-line-denied-face)
   "Construct spec used by the default `ben-indicator' when ben is blocked."
   :type 'sexp)
 
-(defcustom ben-error-indicator '((:propertize "error" face ben-mode-line-error-face))
+(defcustom ben-error-indicator
+  (ben--make-indicator "error" 'ben-mode-line-error-face)
   "Construct spec used by the default `ben-indicator' when ben has errored."
   :type 'sexp)
 
@@ -182,11 +202,12 @@ You can set this to nil to disable the lighter."
 (defvar-keymap ben-command-map
   :doc "Prefix keymap for `ben-mode'."
   :prefix 'ben-command-map
-  "a" #'ben-allow
-  "d" #'ben-deny
-  "r" #'ben-reload
-  "R" #'ben-reload-all
-  "l" #'ben-show-log)
+  :name "ben"
+  "a" '(menu-item "Allow" ben-allow)
+  "d" '(menu-item "Deny" ben-deny)
+  "r" '(menu-item "Reload" ben-reload)
+  "R" '(menu-item "Reload All" ben-reload-all)
+  "l" '(menu-item "Show Log" ben-show-log))
 
 (defvar-keymap ben-mode-map
   :doc "Keymap for `ben-mode'.")
