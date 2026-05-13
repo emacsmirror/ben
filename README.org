@@ -104,8 +104,6 @@ Additionally, at the time of writing, ~ben.el~ has early TRAMP support, while
 Installable packages are available via MELPA: do =M-x package-install RET ben
 RET=.
 
-* Usage
-
 Add a snippet like the following to *your init.el*:
 #+begin_src emacs-lisp
 (use-package ben
@@ -120,7 +118,7 @@ Add a snippet like the following to *your init.el*:
   ;; (setq ben-indicator `(,(substring-no-properties (nerd-icons-faicon "nf-fa-cubes"))
   ;;                       "[" (:eval (ben--status)) "]"))
   :init
-  (add-hook 'elpaca-after-init-hook #'ben-global-mode 99))
+  (add-hook 'after-init-hook #'ben-global-mode 99))
 #+end_src
 
 Why must you enable the global mode *late in your startup sequence* like this?
