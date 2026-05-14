@@ -894,6 +894,7 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
 ;; `ben-mode' must be enabled in the minibuffer. This can be configured by
 ;; setting `ben-disable-in-minibuffer' to nil.
 (advice-add #'Man-completion-table :around #'ben-propagate-environment)
+(advice-add #'dired-shell-command :around #'ben-propagate-environment)
 (advice-add #'shell-command :around #'ben-propagate-environment)
 (advice-add #'shell-command-to-string :around #'ben-propagate-environment)
 (advice-add #'async-shell-command :around #'ben-propagate-environment)
