@@ -693,6 +693,10 @@ also appear in PAIRS."
             (setq-local Info-directory-list
                         (append (seq-filter #'identity (parse-colon-path info-path))
                                 (default-value 'Info-directory-list)))))
+        (when-let* ((emacs-load-path (getenv-internal "EMACSLOADPATH" env)))
+          (setq-local load-path
+                      (seq-uniq (append (string-split emacs-load-path ":")
+                                        load-path))))
         (when (derived-mode-p 'eshell-mode)
           (if (fboundp 'eshell-set-path)
               (eshell-set-path path)
