@@ -144,7 +144,15 @@ using the new environment."
   "The direnv executable used by ben."
   :type 'string)
 
-(define-obsolete-variable-alias 'ben--lighter 'ben-indicator "2021-05-17")
+(defvar-keymap ben-command-map
+  :doc "Prefix keymap for `ben-mode'."
+  :prefix 'ben-command-map
+  :name "ben"
+  "a" '(menu-item "Allow" ben-allow)
+  "d" '(menu-item "Deny" ben-deny)
+  "r" '(menu-item "Reload" ben-reload)
+  "R" '(menu-item "Reload All" ben-reload-all)
+  "l" '(menu-item "Show Log" ben-show-log))
 
 (defcustom ben-indicator '(" ben[" (:eval (ben--status)) "]")
   "The mode line lighter for `ben-mode'.
@@ -198,16 +206,6 @@ You can set this to nil to disable the lighter."
 
 (defvar ben--used-mode-line-construct nil
   "Mode line construct to add to `mode-line-misc-info' when `ben-mode' is on.")
-
-(defvar-keymap ben-command-map
-  :doc "Prefix keymap for `ben-mode'."
-  :prefix 'ben-command-map
-  :name "ben"
-  "a" '(menu-item "Allow" ben-allow)
-  "d" '(menu-item "Deny" ben-deny)
-  "r" '(menu-item "Reload" ben-reload)
-  "R" '(menu-item "Reload All" ben-reload-all)
-  "l" '(menu-item "Show Log" ben-show-log))
 
 (defvar-keymap ben-mode-map
   :doc "Keymap for `ben-mode'.")
@@ -882,26 +880,41 @@ Shortcuts tramp caching direnv sets the variable `exec-path'."
     (or ben--remote-path
         (apply fn vec nil))))
 
+;; NOTE: This functions are meant to be invoked by `completing-read'. Therefore,
+;; `ben-mode' must be enabled in the minibuffer for the environment to
+;; propagate. This can be configured by setting `ben-disable-in-minibuffer' to
+;; nil, this is the default.
+
+;; Doc
 (declare-function Man-completion-table "man")
+(advice-add #'Man-completion-table :around #'ben-propagate-environment)
+
+;; Shells
+(declare-function async-shell-command "simple")
 (declare-function shell-command "simple")
 (declare-function shell-command-to-string "simple")
-(declare-function async-shell-command "simple")
-(declare-function org-babel-eval "ob-eval")
-(declare-function tramp-get-connection-buffer "tramp")
-(declare-function tramp-get-remote-path "tramp-sh")
-
-;; NOTE: since this function is meant to be invoked by `completing-read',
-;; `ben-mode' must be enabled in the minibuffer. This can be configured by
-;; setting `ben-disable-in-minibuffer' to nil.
-(advice-add #'Man-completion-table :around #'ben-propagate-environment)
-(advice-add #'dired-shell-command :around #'ben-propagate-environment)
+(advice-add #'async-shell-command :around #'ben-propagate-environment)
 (advice-add #'shell-command :around #'ben-propagate-environment)
 (advice-add #'shell-command-to-string :around #'ben-propagate-environment)
-(advice-add #'async-shell-command :around #'ben-propagate-environment)
+
+;; Dired
+(declare-function dired-shell-command "dired-aux")
+(advice-add #'dired-shell-command :around #'ben-propagate-environment)
+
+;; ORG
+(declare-function org-babel-eval "ob-eval")
 (advice-add #'org-babel-eval :around #'ben-propagate-environment)
-(advice-add #'tramp-get-connection-buffer :filter-return #'ben-propagate-tramp-environment)
+
+;; TRAMP
+(declare-function tramp-get-connection-buffer "tramp")
+(declare-function tramp-get-remote-path "tramp-sh")
+(advice-add #'tramp-get-connection-buffer :filter-return
+            #'ben-propagate-tramp-environment)
 (advice-add #'tramp-get-remote-path :around #'ben-get-remote-path)
-;; Make sure VC finds the correct program for calling backend.
+
+;; VC
+(declare-function vc-call-backend "vc-hooks")
+(declare-function vc-dir "vc-dir")
 (advice-add #'vc-call-backend :around #'ben-propagate-environment)
 (advice-add #'vc-dir :around #'ben-propagate-environment)
 
