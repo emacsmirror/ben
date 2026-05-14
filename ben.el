@@ -682,12 +682,12 @@ also appear in PAIRS."
              (path (getenv-internal "PATH" env))
              (parsed-path (parse-colon-path path)))
         (if remote
-            (setq-local tramp-remote-process-environment env)
-          (setq-local process-environment env))
-        ;; Get PATH from the merged environment: direnv may not have changed it
-        (if remote
-            (setq-local ben--remote-path parsed-path)
-          (setq-local exec-path parsed-path))
+            ;; Get PATH from the merged environment: direnv may not have changed
+            ;; it.
+            (setq-local ben--remote-path parsed-path
+                        tramp-remote-process-environment env)
+          (setq-local exec-path parsed-path
+                      process-environment env))
         (when (boundp 'Info-directory-list)
           (when-let* ((info-path (getenv-internal "INFOPATH" env)))
             (setq-local Info-directory-list
