@@ -233,22 +233,29 @@ You can set this to nil to disable the lighter."
 (defun ben--eldoc-buffer-p (buffer)
   (string-prefix-p " *eldoc " (buffer-name buffer)))
 
+(defun ben--disabled-context-p ()
+  (or (and (minibufferp) ben-disable-in-minibuffer)
+      (ben--eldoc-buffer-p (current-buffer))))
+
+(defun ben--supported-remote-p ()
+  (and ben-remote
+       (seq-contains-p
+        ben-supported-tramp-methods
+        (with-parsed-tramp-file-name default-directory vec
+          vec-method))))
+
+(defun ben--unavailable-p ()
+  (not (if (file-remote-p default-directory)
+           (ben--supported-remote-p)
+         (executable-find ben-direnv-executable))))
+
 ;;;###autoload
 (define-globalized-minor-mode ben-global-mode ben-mode
   (lambda ()
-    (when
-        (cond
-         ((or (and (minibufferp) ben-disable-in-minibuffer)
-              (ben--eldoc-buffer-p (current-buffer)))
-          nil)
-         ((file-remote-p default-directory)
-          (and ben-remote
-               (seq-contains-p
-                ben-supported-tramp-methods
-                (with-parsed-tramp-file-name default-directory vec vec-method))))
-         (t (executable-find ben-direnv-executable)))
-      (unless ben-mode
-        (ben-mode 1))))
+    (unless (or ben-mode
+                (ben--disabled-context-p)
+                (ben--unavailable-p))
+      (ben-mode 1)))
   :predicate t)
 
 (defface ben-mode-line-on-face '((t :inherit success))
