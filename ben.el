@@ -230,19 +230,25 @@ You can set this to nil to disable the lighter."
     (ben--clear (current-buffer))
     (remove-hook 'eshell-directory-change-hook #'ben--update t)))
 
+(defun ben--eldoc-buffer-p (buffer)
+  (string-prefix-p " *eldoc " (buffer-name buffer)))
+
 ;;;###autoload
 (define-globalized-minor-mode ben-global-mode ben-mode
   (lambda ()
     (when
         (cond
-         ((and (minibufferp) ben-disable-in-minibuffer) nil)
+         ((or (and (minibufferp) ben-disable-in-minibuffer)
+              (ben--eldoc-buffer-p (current-buffer)))
+          nil)
          ((file-remote-p default-directory)
           (and ben-remote
                (seq-contains-p
                 ben-supported-tramp-methods
                 (with-parsed-tramp-file-name default-directory vec vec-method))))
          (t (executable-find ben-direnv-executable)))
-      (ben-mode 1)))
+      (unless ben-mode
+        (ben-mode 1))))
   :predicate t)
 
 (defface ben-mode-line-on-face '((t :inherit success))
