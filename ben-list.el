@@ -137,8 +137,8 @@ If there are no `ben' buffers, cancel the timer."
   "Refresh `ben' process list."
   (interactive)
   ;; HACK: running this while on minibuffer resets `window-point'.
-  (unless (minibufferp)
-    (when-let* ((buf (get-buffer "*ben-processes*")))
+  (let ((buf (get-buffer "*ben-processes*")))
+    (when (equal (current-buffer) buf)
       (with-current-buffer buf
         (let* ((windows (get-buffer-window-list buf))
                (win-and-pts (mapcar (lambda (win)
@@ -147,7 +147,6 @@ If there are no `ben' buffers, cancel the timer."
           (goto-char (point-min))
           (when (vtable-current-table)
             (vtable-revert-command))
-
           (dolist (wp win-and-pts)
             (set-window-point (car wp) (cdr wp))))))))
 
