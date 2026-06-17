@@ -210,6 +210,11 @@ You can set this to nil to disable the lighter."
 (defvar-keymap ben-mode-map
   :doc "Keymap for `ben-mode'.")
 
+(defcustom ben-after-apply-hook nil
+  "List of functions to be called after applying an environment."
+  :type 'hook
+  :group 'ben)
+
 ;;;###autoload
 (define-minor-mode ben-mode
   "A local minor mode in which env vars are set by direnv."
@@ -713,7 +718,8 @@ also appear in PAIRS."
         (when (derived-mode-p 'eshell-mode)
           (if (fboundp 'eshell-set-path)
               (eshell-set-path path)
-            (setq-local eshell-path-env path)))))))
+            (setq-local eshell-path-env path)))
+        (run-hooks 'ben-after-apply-hook)))))
 
 (defun ben--update-env (env-dir)
   "Refresh the state of the direnv in ENV-DIR and apply in all relevant buffers."
