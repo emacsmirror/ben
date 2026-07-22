@@ -113,10 +113,11 @@ Add a snippet like the following to *your init.el*:
   ;; NOTE: Optionally un-comment the following config section to customize the
   ;; mode-line status indicator with nerd-icons.
   ;; :config
-  ;; ;; There is a bug in doom-modeline where some squares appear if the icon is
-  ;; ;; propertized.
   ;; (setq ben-indicator `(,(substring-no-properties (nerd-icons-faicon "nf-fa-cubes"))
-  ;;                       "[" (:eval (ben--status)) "]"))
+  ;;                       "[" (:eval (ben--status)) "]")
+  ;;       ;; A prettier spinner, not all fonts support it.
+  ;;       ben-status-frames
+  ;;       '("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"))
   :init
   (add-hook 'after-init-hook #'ben-global-mode 99))
 #+end_src
