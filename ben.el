@@ -215,6 +215,24 @@ You can set this to nil to disable the lighter."
   :type 'hook
   :group 'ben)
 
+(defun ben--default-directory-watcher (_ newval _ buf)
+  "Since some functions, such as `project-find-file', lexically set the
+value of `default-directory' in the buffer where the function was
+triggered, if `ben--apply' finishes before exiting the minibuffer, the
+value of `default-directory' where the `project-find-file' was triggered
+will still be part of the environment being activated by BEN, possibly
+marking it's status as ON, after exiting the minibuffer, the value of
+`default-directory' will return to it's original value, but nothing will
+inform BEN that it's status must be updated.
+
+This corner case can be triggered by any function that alters the value
+of `default-directory', making `ben--status' outdated.  This variable
+watcher, ensures that the value of `ben--status' is consistent by
+triggering an update with `default-directory' set to NEWVAL for BUF."
+  (with-current-buffer buf
+    (let ((default-directory newval))
+      (ben--status-update-buf buf))))
+
 ;;;###autoload
 (define-minor-mode ben-mode
   "A local minor mode in which env vars are set by direnv."
@@ -227,12 +245,16 @@ You can set this to nil to disable the lighter."
           ;; NOTE since this is a minor mode, `mode-line-misc-info' needs to be
           ;; controlled locally.
           (make-local-variable 'mode-line-misc-info)
-          (add-to-list 'mode-line-misc-info ben-indicator))
+          (add-to-list 'mode-line-misc-info ben-indicator)
+          (add-variable-watcher 'default-directory #'ben--default-directory-watcher))
         (ben--update)
         (when (and (derived-mode-p 'eshell-mode) ben-update-on-eshell-directory-change)
           (add-hook 'eshell-directory-change-hook #'ben--update nil t)))
     (setq mode-line-misc-info (delete ben--used-mode-line-construct mode-line-misc-info))
     (ben--clear (current-buffer))
+    ;; If there is no buffer with `ben-mode' enabled, remove the watcher.
+    (unless (ben--mode-buffers)
+      (remove-variable-watcher 'default-directory #'ben--default-directory-watcher))
     (remove-hook 'eshell-directory-change-hook #'ben--update t)))
 
 (defun ben--eldoc-buffer-p (buffer)
@@ -339,7 +361,7 @@ local variables.")
           (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
                 ben--status 'loading)))
        ((and (not buf-env-dir)
-             (equal ben--status 'loading))
+             (not (equal ben--status 'none)))
         (setq ben--status 'none))))
     (force-mode-line-update)))
 
@@ -376,9 +398,10 @@ ENV-DIR is the directory where to update the status."
                          ((and (not buf-env-dir)
                                (equal ben--status 'loading))
                           'none)
-                         (t status))))
-          (setq ben--status status*)
-          (force-mode-line-update))))))
+                         (t nil))))
+          (when status*
+            (setq ben--status status*)
+            (force-mode-line-update)))))))
 
 (defun ben--env-dir-p (dir)
   "Return non-nil if DIR contains a config file for direnv."
