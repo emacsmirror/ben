@@ -8,7 +8,7 @@
 ;; Keywords: processes, tools
 ;; Homepage: https://codeberg.org/pastor/ben.el
 ;; Package-Requires: ((emacs "29.1") (inheritenv "0.1") (seq "2.24"))
-;; Package-Version: 0.12.13
+;; Package-Version: 0.12.14
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -229,9 +229,12 @@ This corner case can be triggered by any function that alters the value
 of `default-directory', making `ben--status' outdated.  This variable
 watcher, ensures that the value of `ben--status' is consistent by
 triggering an update with `default-directory' set to NEWVAL for BUF."
-  (with-current-buffer buf
-    (let ((default-directory newval))
-      (ben--status-update-buf buf))))
+  ;; It is very important not to update the status if NEWVAL is a remote as it
+  ;; will recursively trigger TRAMP in an infinite loop.
+  (unless (file-remote-p newval)
+    (with-current-buffer buf
+      (let ((default-directory newval))
+        (ben--status-update-buf buf)))))
 
 ;;;###autoload
 (define-minor-mode ben-mode
@@ -713,7 +716,7 @@ also appear in PAIRS."
         (progn
           (ben--debug "[%s] reset environment to default" buf))
       (ben--debug "[%s] applied merged environment" buf)
-      (let* ((remote (when-let* ((fn (buffer-file-name buf)))
+      (let* ((remote (when-let* ((fn (or (buffer-file-name buf) default-directory)))
                        (file-remote-p fn)))
              (env (ben--merged-environment
                    (default-value (if remote
