@@ -428,8 +428,10 @@ called `cd'"
 
 (defun ben--find-deny-hash (env-dir)
   "Return the ben file hash from ENV-DIR."
-  (when-let* ((file-path (or (expand-file-name ".envrc" env-dir)
-                             (expand-file-name ".env" env-dir)))
+  (when-let* ((file-path (let ((envrc (expand-file-name ".envrc" env-dir))
+                               (dotenv (expand-file-name ".env" env-dir)))
+                           (cond ((file-exists-p envrc) envrc)
+                                 ((file-exists-p dotenv) dotenv))))
               (contents (with-temp-buffer
                           (insert file-path "\n")
                           (buffer-string))))
