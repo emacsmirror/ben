@@ -813,7 +813,15 @@ SENTINEL, OUT-BUF, ERR-BUF and ARGS are the respective keywords of
                                  ;; environment as the async process.
                                  (with-current-buffer env-buf
                                    (funcall sentinel process msg)
-                                   (ben-status-stop env-dir))
+                                   ;; `ben--status-timer' is a single timer shared by every buffer that is
+                                   ;; currently showing a loading spinner; one timer is enough to animate them all.
+                                   ;; Because it is shared, it must only be cancelled once no other environment is
+                                   ;; still loading. Otherwise, any other spinner would freeze on its current
+                                   ;; frame.
+                                   (when (and ben--status-timer
+                                              (null (seq-remove (lambda (dir) (equal dir env-dir))
+                                                                (hash-table-keys ben--processes))))
+                                     (ben-status-stop env-dir)))
                                (remhash env-dir ben--processes)))))
     (if running-process
         (ben--debug "Ignoring, process already running for %s." env-dir)

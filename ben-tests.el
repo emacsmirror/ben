@@ -358,6 +358,52 @@ The lexical environment applies only while BODY is evaluated."
         (sleep-for 0.1))
       (should (equal nil (getenv "FOO"))))))
 
+(ert-deftest ben-concurrent-spinner-does-not-freeze ()
+  "Regression test for the spinner-freeze bug.
+
+This test creates 4 directories with a `.envrc' file containing a `sleep
+TIME' directive.  The test loads each of those 4 environment
+concurrently and ensures that one environment finishing earlier than the
+others does not tear down the shared spinner.  Once finished, the status
+of all the buffers loading the environment must the set to 'on'."
+  ;; Create test environment directories.
+  (let ((sleep-times '(1 2 3 4))
+        test-directories bufs)
+    (dolist (time sleep-times)
+      (let ((dir (make-temp-file "ben-spinner-" t)))
+        (push dir test-directories)
+        (let ((default-directory dir))
+          (with-temp-file ".envrc"
+            (insert (format "sleep %d" time)))
+          (ben-tests--exec "allow"))))
+
+    ;; Load environments.
+    (dolist (dir test-directories)
+      (let ((buf (generate-new-buffer (format "*ben-spinner-test-%s*" dir))))
+        (push buf bufs)
+        (with-current-buffer buf
+          (setq default-directory dir)
+          (ben-mode 1))))
+
+    ;; Wait for async processes to register.
+    (when ben-async-processing
+      (sleep-for 0.1))
+
+    ;; For as long as at least one environment is still loading, the shared
+    ;; spinner timer must stay alive.
+    (while (> (hash-table-count ben--processes) 0)
+      (should (timerp ben--status-timer))
+      (sleep-for 0.1))
+
+    ;; Once every environment has finished, the timer must have been torn down.
+    (should (null ben--status-timer))
+
+    ;; Every buffer must have settled on "on"; none should be stuck showing the
+    ;; loading spinner.
+    (dolist (buf bufs)
+      (with-current-buffer buf
+        (should (eq ben--status 'on))))))
+
 ;; TODO:
 ;; - Setting exec-path and eshell-path-env
 
