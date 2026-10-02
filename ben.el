@@ -231,7 +231,8 @@ watcher, ensures that the value of `ben--status' is consistent by
 triggering an update with `default-directory' set to NEWVAL for BUF."
   ;; It is very important not to update the status if NEWVAL is a remote as it
   ;; will recursively trigger TRAMP in an infinite loop.
-  (unless (file-remote-p newval)
+  (when (and newval
+             (not (file-remote-p newval)))
     (with-current-buffer buf
       (let ((default-directory newval))
         (ben--status-update-buf buf)))))
