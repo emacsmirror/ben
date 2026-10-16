@@ -228,14 +228,15 @@ inform BEN that it's status must be updated.
 This corner case can be triggered by any function that alters the value
 of `default-directory', making `ben--status' outdated.  This variable
 watcher, ensures that the value of `ben--status' is consistent by
-triggering an update with `default-directory' set to NEWVAL for BUF."
+triggering a refresh with `default-directory' set to NEWVAL for BUF."
   ;; It is very important not to update the status if NEWVAL is a remote as it
   ;; will recursively trigger TRAMP in an infinite loop.
   (when (and newval
+             (buffer-live-p buf)
              (not (file-remote-p newval)))
     (with-current-buffer buf
       (let ((default-directory newval))
-        (ben--status-update-buf buf)))))
+        (ben--refresh-status)))))
 
 ;;;###autoload
 (define-minor-mode ben-mode
@@ -326,6 +327,13 @@ environment applied once the async process finishes.")
   "Symbol indicating state of the current buffer's direnv.
 One of \\='(none loading on error).")
 
+(defvar-local ben--applied-env-dir nil
+  "Directory of the environment currently applied to this buffer.
+This is set by `ben--apply' when a merged environment is installed,
+and cleared otherwise.  It allows `ben--refresh-status' to tell apart
+buffers with an active environment from buffers without one, even while
+`default-directory' temporarily points somewhere else.")
+
 (defvar-local ben--remote-path nil
   "Buffer local variable for remote path.
 If set, this will override `tramp-remote-path' via connection
@@ -351,33 +359,51 @@ local variables.")
     (`denied ben-denied-indicator)
     (`error ben-error-indicator)))
 
-(defvar ben--loading-buf-list '()
-  "List of buffers that are loading an environment.")
+(defun ben--refresh-status (&optional buf)
+  "Recompute the status of BUF from its state.
 
-(defun ben--status-update-buf (buf)
-  "Update the spinner in BUF's mode line."
-  (with-current-buffer buf
-    (let ((loading-environments (hash-table-keys ben--processes))
-          (buf-env-dir (ben--find-env-dir)))
-      (cond
-       ((member buf-env-dir loading-environments)
-        (let ((spinner (nth ben--status-index ben-status-frames)))
-          (setq ben--loading-indicator `((:propertize ,spinner face ben-mode-line-loading-face))
-                ben--status 'loading)))
-       ((and (not buf-env-dir)
-             (not (equal ben--status 'none)))
-        (setq ben--status 'none))))
-    (force-mode-line-update)))
+This handles status transition without running `direnv'.  The
+`default-directory' variable watcher and the spinner timer call it,
+which guarantees that transient changes to `default-directory' cannot
+leave a stale status behind:
+
+- If BUF's environment directory is loading, show the spinner.
+- If an environment is applied to BUF, its status is `on', even while
+  `default-directory' points somewhere else.
+- `denied' and `error' are obtained by running `direnv'; only
+  `ben--apply' may overwrite them.
+
+The status of buffers without `ben-mode' is left untouched."
+  (with-current-buffer (or buf (current-buffer))
+    (when ben-mode
+      (let ((buf-env-dir (ben--find-env-dir)))
+        (cond
+         ;; Active ben process -> loading.
+         ((and buf-env-dir (gethash buf-env-dir ben--processes))
+          (setq ben--status-index
+                (mod (1+ ben--status-index)
+                     (length ben-status-frames))
+                ben--loading-indicator
+                `((:propertize ,(nth ben--status-index ben-status-frames)
+                               face ben-mode-line-loading-face))
+                ben--status 'loading))
+         ;; Already applied -> on.
+         (ben--applied-env-dir
+          (setq ben--status 'on))
+         ((memq ben--status '(denied error))
+          ;; `ben--apply' will change any of these status, do nothing here.
+          nil)
+         ;; Nothing is loading nor applied: the reset state.
+         ((memq ben--status '(loading on))
+          (setq ben--status 'none))))
+      (force-mode-line-update))))
 
 (defun ben-status-update ()
-  "Update the spinner in the mode line."
-  (setq ben--status-index
-        (mod (1+ ben--status-index)
-             (length ben-status-frames)))
+  "Update the spinner in the visible mode lines."
   (walk-windows (lambda (win)
                   (let ((buf (window-buffer win)))
                     (unless (minibufferp buf)
-                      (ben--status-update-buf buf))))))
+                      (ben--refresh-status buf))))))
 
 (defun ben-status-start ()
   "Start the spinner and update it periodically."
@@ -386,26 +412,13 @@ local variables.")
     (setq ben--status-timer
           (run-with-timer 0 0.1 #'ben-status-update))))
 
-(defun ben-status-stop (env-dir)
-  "Stop the spinner and remove it from the mode line.
-ENV-DIR is the directory where to update the status."
+(defun ben-status-stop ()
+  "Stop the spinner and refresh the status of every `ben-mode' buffer."
   (when ben--status-timer
     (cancel-timer ben--status-timer)
     (setq ben--status-timer nil))
-  (let ((status ben--status))
-    (dolist (buf (ben--mode-buffers))
-      (with-current-buffer buf
-        (let* ((buf-env-dir (ben--find-env-dir))
-               (status* (cond
-                         ((equal buf-env-dir env-dir)
-                          status)
-                         ((and (not buf-env-dir)
-                               (equal ben--status 'loading))
-                          'none)
-                         (t nil))))
-          (when status*
-            (setq ben--status status*)
-            (force-mode-line-update)))))))
+  (dolist (buf (ben--mode-buffers))
+    (ben--refresh-status buf)))
 
 (defun ben--env-dir-p (dir)
   "Return non-nil if DIR contains a config file for direnv."
@@ -467,11 +480,11 @@ environments updated."
               (puthash cache-key env ben--cache))
             (unwind-protect
                 (when (buffer-live-p cur-buf)
-                  (ben--apply cur-buf env))
+                  (ben--apply cur-buf env env-dir))
               (let ((subscribed (alist-get 'subscribed (gethash env-dir ben--processes))))
                 (dolist (buf subscribed)
                   (when (buffer-live-p buf)
-                    (ben--apply buf env))))))))
+                    (ben--apply buf env env-dir))))))))
     (if env-dir
         (if cache
             (funcall update-callback cache)
@@ -502,7 +515,7 @@ environments updated."
                               calculated))
                   (cached cached)))
             'none)))
-    (ben--apply (current-buffer) result)))
+    (ben--apply (current-buffer) result env-dir)))
 
 (defun ben--update ()
   "Update the current buffer's environment if it is managed by direnv.
@@ -701,6 +714,7 @@ also appear in PAIRS."
 (defun ben--clear (buf)
   "Remove any effects of `ben-mode' from BUF."
   (with-current-buffer buf
+    (kill-local-variable 'ben--applied-env-dir)
     (kill-local-variable 'exec-path)
     (kill-local-variable 'process-environment)
     (kill-local-variable 'Info-directory-list)
@@ -710,11 +724,14 @@ also appear in PAIRS."
         (kill-local-variable 'eshell-path-env)))))
 
 
-(defun ben--apply (buf result)
-  "Update BUF with RESULT, which is a result of `ben--export'."
+(defun ben--apply (buf result env-dir)
+  "Update BUF with RESULT, which is a result of `ben--export'.
+ENV-DIR is the environment directory RESULT was exported from, and is
+recorded to derive the buffer's status afterwards."
   (with-current-buffer buf
     (setq-local ben--status (if (listp result) 'on result))
     (ben--clear buf)
+    (setq-local ben--applied-env-dir (and (listp result) env-dir))
     (if (memq result '(none error denied))
         (progn
           (ben--debug "[%s] reset environment to default" buf))
@@ -800,30 +817,29 @@ SENTINEL, OUT-BUF, ERR-BUF and ARGS are the respective keywords of
   (let* ((env-buf (current-buffer))
          (env-dir default-directory)
          (running-process (alist-get 'process (gethash env-dir ben--processes)))
-         (wrapped-sentinel (lambda (process msg)
-                             (unless (buffer-live-p env-buf)
-                               ;; Migrate to any buffer from the same env.
-                               (setq env-buf
-                                     (seq-find (lambda (buf)
-                                                 (with-current-buffer buf
-                                                   (equal (ben--find-env-dir) env-dir)))
-                                               (ben--mode-buffers))))
-                             (unwind-protect
-                                 ;; NOTE: the call back and the status stop
-                                 ;; should run in a buffer from the same
-                                 ;; environment as the async process.
-                                 (with-current-buffer env-buf
-                                   (funcall sentinel process msg)
-                                   ;; `ben--status-timer' is a single timer shared by every buffer that is
-                                   ;; currently showing a loading spinner; one timer is enough to animate them all.
-                                   ;; Because it is shared, it must only be cancelled once no other environment is
-                                   ;; still loading. Otherwise, any other spinner would freeze on its current
-                                   ;; frame.
-                                   (when (and ben--status-timer
-                                              (null (seq-remove (lambda (dir) (equal dir env-dir))
-                                                                (hash-table-keys ben--processes))))
-                                     (ben-status-stop env-dir)))
-                               (remhash env-dir ben--processes)))))
+         (wrapped-sentinel
+          (lambda (process msg)
+            (unless (buffer-live-p env-buf)
+              ;; Migrate to any buffer from the same env.
+              (setq env-buf
+                    (seq-find (lambda (buf)
+                                (with-current-buffer buf
+                                  (equal (ben--find-env-dir) env-dir)))
+                              (ben--mode-buffers))))
+            (unwind-protect
+                ;; NOTE: the call back and the status stop should run in a
+                ;; buffer from the same environment as the async process.
+                (with-current-buffer env-buf
+                  (funcall sentinel process msg))
+              (remhash env-dir ben--processes)
+              ;; `ben--status-timer' is a single timer shared by every buffer
+              ;; that is currently showing a loading spinner; one timer is
+              ;; enough to animate them all.  Because it is shared, it must only
+              ;; be cancelled once no other environment is still loading.
+              ;; Otherwise, any other spinner would freeze on its current frame.
+              (when (and ben--status-timer
+                         (zerop (hash-table-count ben--processes)))
+                (ben-status-stop))))))
     (if running-process
         (ben--debug "Ignoring, process already running for %s." env-dir)
       (let* ((exec-path (default-value 'exec-path))

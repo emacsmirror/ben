@@ -73,6 +73,17 @@ The lexical environment applies only while BODY is evaluated."
                     (when (get-buffer "*ben-debug*")
                       (with-current-buffer "*ben-debug*" (buffer-string)))))))))
 
+(defun ben-tests--wait-for-status (status)
+  "Wait until `ben--status' equals STATUS.
+
+When `ben-async-processing' is nil, no waiting happens, as the status is
+expected to be already correct.  Otherwise, wait up to 5 seconds."
+  (let ((tries (if ben-async-processing 50 0)))
+    (while (and (> tries 0)
+                (not (eq ben--status status)))
+      (sleep-for 0.1)
+      (setq tries (1- tries)))))
+
 (ert-deftest ben-no-op ()
   "When there's no .envrc, do nothing."
   (ben-tests--with-temp-directory _
@@ -192,6 +203,101 @@ The lexical environment applies only while BODY is evaluated."
       (when ben-async-processing
         (sleep-for 0.1))
       (should (equal "BAZ" (getenv "FOO"))))))
+
+(ert-deftest ben-status-survives-temporary-default-directory-change ()
+  "A temporary change of `default-directory' must not clobber the status.
+
+Regression test: functions that lexically bind `default-directory',
+such as `project-find-file', used to flip a still valid status to
+\\='none, leaving the mode line stale until the environment was applied
+again."
+  (ben-tests--with-temp-directory _
+    (with-temp-file ".envrc"
+      (insert "export FOO=BAR"))
+
+    (ben-tests--exec "allow")
+
+    (with-temp-buffer
+      (ben-mode 1)
+      (ben-tests--wait-for-status 'on)
+      (should (local-variable-p 'process-environment))
+      (should (equal "BAR" (getenv "FOO")))
+      (should (eq ben--status 'on))
+      ;; Simulate a function lexically binding `default-directory' outside
+      ;; the environment.
+      (let ((default-directory temporary-file-directory))
+        (should (eq ben--status 'on)))
+      (should (eq ben--status 'on))
+      (should (equal "BAR" (getenv "FOO"))))))
+
+(ert-deftest ben-denied-status-survives-temporary-directory-change ()
+  "A denied environment must keep its status through directory changes.
+
+A \\='denied verdict comes from running `direnv'; temporarily changing
+`default-directory' must not overwrite it."
+  (ben-tests--with-temp-directory _
+    (with-temp-file ".envrc"
+      (insert "export FOO=BAR"))
+    (ben-tests--exec "deny")
+
+    (with-temp-buffer
+      (ben-mode 1)
+      (ben-tests--wait-for-status 'denied)
+      (should (eq ben--status 'denied))
+      (let ((default-directory temporary-file-directory))
+        (should (eq ben--status 'denied)))
+      (should (eq ben--status 'denied)))))
+
+(ert-deftest ben-status-settles-after-directory-change-while-loading ()
+  "Changing the directory while loading must not prevent settling on on."
+  (ben-tests--with-temp-directory _
+    (with-temp-file ".envrc"
+      (insert "sleep 1\nexport FOO=BAR"))
+    (ben-tests--exec "allow")
+
+    (with-temp-buffer
+      (ben-mode 1)
+      (when ben-async-processing
+        (sleep-for 0.1))
+      ;; Lexically move `default-directory' outside the environment while it
+      ;; is still loading.
+      (let ((default-directory temporary-file-directory))
+        nil)
+      (ben-tests--wait-for-status 'on)
+      (should (eq ben--status 'on))
+      (should (equal "BAR" (getenv "FOO"))))))
+
+(ert-deftest ben-status-stop-refreshes-each-buffer ()
+  "`ben-status-stop' must recompute every status from its own buffer.
+
+A stale status in one buffer must not be broadcast to the other buffers
+sharing its environment."
+  (ben-tests--with-temp-directory dir
+    (with-temp-file ".envrc"
+      (insert "export FOO=BAR"))
+    (ben-tests--exec "allow")
+
+    (let ((buf1 (generate-new-buffer " *ben-test-1*"))
+          (buf2 (generate-new-buffer " *ben-test-2*")))
+      (unwind-protect
+          (progn
+            (dolist (buf (list buf1 buf2))
+              (with-current-buffer buf
+                (setq default-directory dir)
+                (ben-mode 1)))
+
+            (with-current-buffer buf2
+              (ben-tests--wait-for-status 'on)
+              (should (eq ben--status 'on))
+              ;; Simulate a stale status; it must be restored, not broadcast.
+              (setq ben--status 'none)
+              (ben-status-stop)
+              (should (eq ben--status 'on)))
+
+            (with-current-buffer buf1
+              (should (eq ben--status 'on))))
+        (kill-buffer buf1)
+        (kill-buffer buf2)))))
 
 (ert-deftest ben-masks-global-var-when-overridden ()
   (ben-tests--with-extra-global-env-var "FOO" "BANANA"
