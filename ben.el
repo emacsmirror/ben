@@ -610,7 +610,8 @@ CALLBACK the function which will get the return value."
                            (setq result 'denied)
                          (setq result 'error)))
                       (t
-                       (message "Direnv failed in %s" env-dir)
+                       (message (substitute-command-keys "Direnv failed in %s (display logs with \\[ben-show-log])")
+                                env-dir)
                        (setq result 'error)))
                 (ben--at-end-of-special-buffer "*ben*"
                   (insert "──── " (format-time-string "%F %T") " ──── " env-dir " ────\n\n")
@@ -620,13 +621,7 @@ CALLBACK the function which will get the return value."
                               (ansi-color-apply (buffer-string))))
                     (goto-char (point-max))
                     (add-face-text-property initial-pos (point) (if (eq 0 exit-code) 'success 'error)))
-                  (insert "\n\n")
-                  ;; Since the async processing interface allows the user to
-                  ;; interactively kill the process, do not popup the buffer
-                  ;; when `ben-async-processing' is true.
-                  (when (and (numberp exit-code) (and (/= 0 exit-code)
-                                                      (/= 9 exit-code)))
-                    (display-buffer (current-buffer)))))
+                  (insert "\n\n")))
               (kill-buffer stdout)
               (kill-buffer stderr)
               result)))
